@@ -1,0 +1,49 @@
+{
+  "name": "integrative-suite",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:format": "prisma format"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@dnd-kit/sortable": "^6.0.0",
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.8",
+    "@fullcalendar/resource-timegrid": "^6.1.8",
+    "@fullcalendar/timegrid": "^6.1.20",
+    "@prisma/client": "^5.0.0",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@supabase/supabase-js": "^2.30.0",
+    "@types/bcryptjs": "^2.4.6",
+    "autoprefixer": "^10.4.20",
+    "bcryptjs": "^3.0.3",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.458.0",
+    "next": "^16.2.3",
+    "next-auth": "^4.24.14",
+    "postcss": "^8.4.37",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "resend": "^1.0.0",
+    "tailwindcss": "^3.4.4",
+    "twilio": "^4.20.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^16.2.3",
+    "prisma": "^5.0.0",
+    "typescript": "^5.6.2"
+  }
+}

@@ -1,0 +1,687 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Ruolo {
+  SUPERADMIN
+  ADMIN
+  MARKETING
+  MEDICO
+  STAFF
+}
+
+enum LivelloPermesso {
+  NONE
+  READ
+  WRITE
+}
+
+enum TipoPaziente {
+  PRIVATO
+  AZIENDA
+}
+
+enum StatoLead {
+  NUOVO
+  DA_RICHIAMARE
+  FOLLOW_UP
+  FISSATO
+  IN_ATTESA_CENTRO
+  APPUNTAMENTO
+  CONVERTITO
+  NON_INTERESSATO
+}
+
+enum FasePercorso {
+  BIOSCAN_INIZIALE
+  LETTURA_REFERTO
+  IN_CURA
+  MANTENIMENTO
+  CONCLUSO
+}
+
+enum TipoCura {
+  TRATTAMENTI
+  FITOTERAPIA
+  ENTRAMBI
+}
+
+enum TipoPrestazione {
+  BIOSCAN
+  LETTURA_REFERTO
+  TRATTAMENTO
+  FITOTERAPIA
+  MANTENIMENTO
+}
+
+enum StatoProgramma {
+  ATTIVO
+  SOSPESO
+  COMPLETATO
+}
+
+enum StatoAppuntamento {
+  FISSATO          // appuntamento prenotato, non ancora confermato dal paziente
+  CONFERMATO
+  COMPLETATO
+  CANCELLATO
+  NO_SHOW
+  DA_RIPROGRAMMARE // appuntamento saltato o spostato, da riprenotare
+}
+
+enum StatoFattura {
+  EMESSA
+  PAGATA
+  ANNULLATA
+}
+
+enum TipoFattura {
+  BIOSCAN
+  TRATTAMENTO
+  FITOTERAPIA
+  MANTENIMENTO
+}
+
+enum MetodoPagamento {
+  CASH
+  BONIFICO
+  CARTA
+  TOKEN
+}
+
+enum StatoPrescrizioneFito {
+  ATTIVA
+  SOSPESA
+  CONCLUSA
+}
+
+enum TipoBioscan {
+  INIZIALE
+  CONTROLLO
+}
+
+enum RispostaPaziente {
+  OTTIMA
+  BUONA
+  SCARSA
+}
+
+model Studio {
+  id         String   @id @default(uuid())
+  nome       String
+  indirizzo  String?
+  citta      String?
+  provincia  String?
+  partitaIva String?
+  telefono   String?
+  email      String?
+  config     Json     @default("{}")
+  ordine     Int      @default(0)
+  attivo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  utenti            Utente[]
+  sale              Sala[]
+  pazienti          Paziente[]
+  lead              Lead[]
+  appuntamenti      Appuntamento[]
+  fatture           Fattura[]
+  prodottiFito      ProdottoFito[]
+  tipologieBioscan  TipologiaBioscan[]
+  percorsi          Percorso[]
+  bioscan           Bioscan[]
+  team              Team[]
+  prescrizioniFito  PrescrizioneFito[]
+  prescrizioniMediche Prescrizione[]
+  prestazioni       Prestazione[]
+  origini           OrigineAcquisizione[]
+
+  @@index([ordine])
+}
+
+model Utente {
+  id              String   @id @default(uuid())
+  studioId        String?
+  nome            String
+  cognome         String
+  email           String   @unique
+  passwordHash    String?  // hash bcrypt della password
+  telefono        String?
+  telefonoWa      String?
+  emailContatto   String?
+  partitaIva      String?
+  indirizzo       String?
+  ruolo           Ruolo
+  colore          String    @default("#6366f1") // colore identificativo nel calendario
+  attivo          Boolean   @default(true)
+  ordine          Int       @default(0)
+  ultimoAccesso   DateTime? // data e ora dell'ultimo login effettuato
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  studio       Studio?            @relation(fields: [studioId], references: [id])
+  permessi     Permesso[]
+  appuntamenti Appuntamento[]
+  bioscan      Bioscan[]
+  prescrizioni         PrescrizioneFito[]
+  prescrizioniMediche  Prescrizione[]
+  auditLog             AuditLog[]
+  teamMembri           CollaboratoreTeam[]
+
+  @@index([studioId, ordine])
+}
+
+model Permesso {
+  id       String          @id @default(uuid())
+  utenteId String
+  sezione  String
+  livello  LivelloPermesso @default(NONE)
+
+  utente Utente @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+
+  @@unique([utenteId, sezione])
+}
+
+model Sala {
+  id       String  @id @default(uuid())
+  studioId String
+  nome     String
+  colore   String  @default("#7F77DD")
+  attiva   Boolean @default(true)
+  ordine   Int     @default(0)
+  // Storico di attività: data inizio del periodo attivo corrente e data
+  // di "eliminazione" (disattivazione). Servono per mostrare la sala
+  // nel calendario solo nei giorni in cui era effettivamente attiva.
+  // Quando la sala viene riattivata, dataAttivazione viene aggiornata
+  // a "ora" e dataDisattivazione torna a null.
+  dataAttivazione    DateTime  @default(now())
+  dataDisattivazione DateTime?
+
+  studio       Studio         @relation(fields: [studioId], references: [id])
+  appuntamenti Appuntamento[]
+
+  @@index([studioId, ordine])
+}
+
+model Team {
+  id       String  @id @default(uuid())
+  studioId String
+  nome     String
+  ordine   Int     @default(0)
+  attivo   Boolean @default(true)
+
+  studio        Studio              @relation(fields: [studioId], references: [id])
+  collaboratori CollaboratoreTeam[]
+  appuntamenti  Appuntamento[]
+
+  @@index([studioId, ordine])
+}
+
+// Tipi di prestazione configurabili per studio: nome, prezzo, durata, colore calendario
+model Prestazione {
+  id           String  @id @default(uuid())
+  studioId     String
+  nome         String
+  colore       String  @default("#64748b")
+  prezzoBase   Decimal @db.Decimal(10, 2)
+  durataMinuti Int
+  ordine       Int     @default(0)
+  attiva       Boolean @default(true)
+
+  studio       Studio         @relation(fields: [studioId], references: [id])
+  appuntamenti Appuntamento[]
+  programmaCure ProgrammaCura[]
+
+  @@index([studioId, ordine])
+}
+
+model Programma {
+  id                     String              @id @default(uuid())
+  nome                   String
+  descrizione            String?
+  tipo                   TipoCura            @default(TRATTAMENTI)
+  defaultSessioni        Int                 @default(8)    // numero sessioni di trattamento
+  durataSessioneMinuti   Int                 @default(60)   // durata di ogni sessione in minuti
+  prezzoSessione         Decimal             @default(500)  @db.Decimal(10,2)
+  prezzoBioscanIniziale  Decimal             @default(0)    @db.Decimal(10,2) // default gratuito
+  prezzoBioscanControllo Decimal             @default(0)    @db.Decimal(10,2)
+  attivo                 Boolean             @default(true)
+  ordine                 Int                 @default(0)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  cure         ProgrammaCura[]
+  assegnamenti ProgrammaPaziente[]
+}
+
+model ProgrammaCura {
+  id              String          @id @default(uuid())
+  programmaId     String
+  nome            String
+  tipoPrestazione TipoPrestazione
+  prestazioneId   String?
+  prezzo          Decimal         @db.Decimal(10,2)
+  durataMinuti    Int
+  ordine          Int             @default(0)
+
+  programma       Programma       @relation(fields: [programmaId], references: [id], onDelete: Cascade)
+  prestazione     Prestazione?    @relation(fields: [prestazioneId], references: [id])
+}
+
+model ProgrammaPaziente {
+  id                 String          @id @default(uuid())
+  programmaId        String
+  pazienteId         String
+  percorsoId         String
+  sessioniTotali     Int             @default(8)
+  sessioniCompletate Int             @default(0)
+  stato              StatoProgramma  @default(ATTIVO)
+  dataInizio         DateTime        @default(now())
+  dataFine           DateTime?
+  note               String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  programma          Programma       @relation(fields: [programmaId], references: [id])
+  paziente           Paziente        @relation(fields: [pazienteId], references: [id])
+  percorso           Percorso        @relation(fields: [percorsoId], references: [id])
+  appuntamenti       Appuntamento[]
+}
+
+model CollaboratoreTeam {
+  id                String    @id @default(uuid())
+  teamId            String
+  utenteId          String
+  isManager         Boolean   @default(false)
+  // Se true: l'operatore è un "referral" per lo studio del team — il suo nome
+  // compare automaticamente nelle Origini acquisizione di quello studio,
+  // così quando si registra un paziente lo si può selezionare come canale.
+  isReferral        Boolean   @default(false)
+  compensoOra       Decimal   @db.Decimal(10,2)
+  percentualeTeam   Decimal?  @db.Decimal(5,2)
+  isPrimario        Boolean   @default(true)
+  dataInizio        DateTime  @default(now())
+  dataFine          DateTime?
+
+  team   Team   @relation(fields: [teamId], references: [id])
+  utente Utente @relation(fields: [utenteId], references: [id])
+
+  @@index([utenteId])
+  @@index([teamId])
+}
+
+model CompensoPeriodo {
+  id                 String   @id @default(uuid())
+  studioId           String
+  utenteId           String
+  teamId             String
+  anno               Int
+  mese               Int
+  oreLavorate        Decimal  @db.Decimal(6,2)
+  compensoOraStorico Decimal  @db.Decimal(10,2)
+  subtotaleOre       Decimal  @db.Decimal(10,2)
+  fattutatoTeam      Decimal? @db.Decimal(10,2)
+  percentualeStorica Decimal? @db.Decimal(5,2)
+  bonusTeam          Decimal? @db.Decimal(10,2)
+  totale             Decimal  @db.Decimal(10,2)
+  calcolatoAt        DateTime @default(now())
+
+  @@unique([utenteId, teamId, anno, mese])
+  @@index([studioId, anno, mese])
+}
+
+model Lead {
+  id                   String    @id @default(uuid())
+  studioId             String?
+  nome                 String
+  cognome              String
+  email                String?
+  telefono             String
+  citta                String?
+  provincia            String?
+  canale               String
+  campagna             String?
+  dataLead             DateTime  @default(now())
+  stato                StatoLead @default(NUOVO)
+  operatoreId          String?
+  dataRichiamata       DateTime?
+  dataFollowup         DateTime?
+  noteOperatore        String?
+  servizioInteresse    String?   // es. BIOSCAN, TRATTAMENTI, FITOTERAPIA, ENTRAMBI
+  nascosto             Boolean   @default(false)
+  urgente              Boolean   @default(false)
+  convertitoPazienteId String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  studio Studio? @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, stato])
+  @@index([dataRichiamata])
+}
+
+model Paziente {
+  id               String       @id @default(uuid())
+  studioId         String
+  tipo             TipoPaziente @default(PRIVATO)
+  nome             String
+  cognome          String?
+  dataNascita      DateTime?
+  codiceFiscale    String?
+  ragioneSociale   String?
+  partitaIva       String?
+  codiceSDI        String?
+  pec              String?
+  referente        String?
+  indirizzoLegale  String?
+  telefono         String?
+  telefonoWa       String?
+  email            String?
+  indirizzo        String?
+  cap              String?
+  citta            String?
+  provincia        String?
+  sesso            String?   // M = Maschio, F = Femmina
+  stato            String?   @default("Italia") // paese di residenza
+  note             String?   // note libere sull'anagrafica paziente
+  operatoreId          String?
+  leadId               String?
+  canale               String?   // da dove proviene il paziente (Passaparola, Facebook…)
+  campagna             String?   // nome campagna di acquisizione
+  dataDiventaPaziente  DateTime? // data in cui è diventato paziente (creazione o conversione lead)
+  attivo               Boolean   @default(true)
+  statoCura            String?   // null = normale, 'DA_RICHIAMARE' = vuole pensarci, 'NON_INTERESSATO' = non ha preso nulla
+  dataRichiamo         DateTime? // data fissata per richiamare il paziente (dopo lettura referto)
+  perso                Boolean   @default(false) // paziente che non vuole più essere ricontattato
+  persoNota            String?                   // motivo per cui il paziente è stato segnato come perso
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  studio       Studio             @relation(fields: [studioId], references: [id])
+  percorsi     Percorso[]
+  appuntamenti Appuntamento[]
+  fatture      Fattura[]
+  bioscan      Bioscan[]
+  prescrizioni         PrescrizioneFito[]
+  prescrizioniMediche  Prescrizione[]
+  assegnamenti         ProgrammaPaziente[]
+
+  @@index([studioId, attivo])
+  @@index([studioId, tipo])
+}
+
+model Percorso {
+  id                 String       @id @default(uuid())
+  studioId           String
+  pazienteId         String
+  fase               FasePercorso @default(BIOSCAN_INIZIALE)
+  tipoCura           TipoCura?
+  sessioniCompletate Int          @default(0)
+  sessioniTotali     Int          @default(6)   // numero sessioni pianificate nel ciclo
+  attivo             Boolean      @default(true)
+  dataInizio         DateTime     @default(now())
+  dataFine           DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  studio            Studio             @relation(fields: [studioId], references: [id])
+  paziente          Paziente           @relation(fields: [pazienteId], references: [id])
+  appuntamenti      Appuntamento[]
+  bioscan           Bioscan[]
+  prescrizioni      PrescrizioneFito[]
+  fatture           Fattura[]
+  programmaPazienti ProgrammaPaziente[]
+
+  @@index([studioId, attivo])
+  @@index([pazienteId, attivo])
+}
+
+model Bioscan {
+  id                String      @id @default(uuid())
+  studioId          String
+  pazienteId        String
+  medicoId          String
+  percorsoId        String?
+  tipo              TipoBioscan @default(INIZIALE)
+  dataEsecuzione    DateTime
+  sistemiAnalizzati Json        @default("[]")
+  livelliStress     Json        @default("{}")
+  frequenze         Json        @default("{}")
+  interpretazione   String?
+  raccomandazioni   String?
+  prezzo            Decimal?
+  effettuato           Boolean     @default(false)   // bioscan eseguito (paziente si è presentato)
+  refertoConsegnato    Boolean     @default(false)   // referto consegnato al paziente
+  appuntamentoId       String?     @unique            // link all'appuntamento bioscan in calendario
+  letturaRefertoId     String?     @unique            // link all'appuntamento di lettura referto
+  createdAt            DateTime    @default(now())
+
+  studio         Studio        @relation(fields: [studioId], references: [id])
+  paziente       Paziente      @relation(fields: [pazienteId], references: [id])
+  medico         Utente        @relation(fields: [medicoId], references: [id])
+  percorso       Percorso?     @relation(fields: [percorsoId], references: [id])
+  appuntamento   Appuntamento? @relation("BioscanAppuntamento", fields: [appuntamentoId], references: [id])
+  letturaReferto Appuntamento? @relation("BioscanLetturaReferto", fields: [letturaRefertoId], references: [id])
+  fattura        Fattura?
+
+  @@index([studioId, pazienteId])
+}
+
+model Appuntamento {
+  id               String            @id @default(uuid())
+  studioId         String
+  pazienteId       String
+  medicoId         String
+  salaId           String
+  percorsoId       String?
+  teamId           String?
+  prestazioneId    String?          // FK alla prestazione configurata nello studio
+  tipoPrestazione  String           // nome della prestazione (denormalizzato per ricerche/display)
+  inizio           DateTime
+  fine             DateTime
+  stato            StatoAppuntamento @default(FISSATO)
+  prezzoBase       Decimal           @db.Decimal(10,2)
+  prezzoApplicato     Decimal           @db.Decimal(10,2)
+  programmaPazienteId String?
+  notePrezzo          String?
+  eseguita         Boolean           @default(false)
+  dataEsecuzione   DateTime?
+  eseguitaDa       String?
+  note             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  studio            Studio             @relation(fields: [studioId], references: [id])
+  paziente          Paziente           @relation(fields: [pazienteId], references: [id])
+  medico            Utente             @relation(fields: [medicoId], references: [id])
+  sala              Sala               @relation(fields: [salaId], references: [id])
+  percorso          Percorso?          @relation(fields: [percorsoId], references: [id])
+  team              Team?              @relation(fields: [teamId], references: [id])
+  prestazione       Prestazione?       @relation(fields: [prestazioneId], references: [id])
+  programmaPaziente ProgrammaPaziente? @relation(fields: [programmaPazienteId], references: [id])
+  sessione          TrattamentoSessione?
+  bioscan               Bioscan? @relation("BioscanAppuntamento")
+  bioscanLetturaReferto Bioscan? @relation("BioscanLetturaReferto")
+  fattura               Fattura?
+
+  @@index([studioId, medicoId, inizio, fine])
+  @@index([studioId, salaId, inizio, fine])
+  @@index([studioId, pazienteId])
+  @@index([studioId, stato])
+  @@index([teamId])
+  @@index([programmaPazienteId])
+}
+
+model TrattamentoSessione {
+  id               String            @id @default(uuid())
+  studioId         String
+  appuntamentoId   String            @unique
+  percorsoId       String
+  medicoId         String
+  numeroSessione   Int
+  noteCliniche     String?
+  rispostaPaziente RispostaPaziente?
+  createdAt        DateTime          @default(now())
+
+  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id])
+
+  @@index([percorsoId])
+}
+
+model ProdottoFito {
+  id                  String  @id @default(uuid())
+  studioId            String
+  nome                String
+  produttore          String?
+  principioAttivo     String?
+  dosaggio            String?
+  prezzoMese          Decimal @db.Decimal(10,2)
+  durataDefaultMesi   Int     @default(1)  // durata standard in mesi per le prescrizioni
+  note                String?
+  attivo              Boolean @default(true)
+  ordine              Int     @default(0)
+
+  studio               Studio                 @relation(fields: [studioId], references: [id])
+  prescrizioneProdotti PrescrizioneProdotto[]
+
+  @@index([studioId, ordine])
+}
+
+model TipologiaBioscan {
+  id           String  @id @default(uuid())
+  studioId     String
+  tipologia    String
+  colore       String  @default("#6366f1")
+  prezzo       Decimal @db.Decimal(10,2)
+  durataMinuti Int     @default(60)
+  attiva       Boolean @default(true)
+  ordine       Int     @default(0)
+
+  studio Studio @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, ordine])
+}
+
+model PrescrizioneFito {
+  id         String                @id @default(uuid())
+  studioId   String
+  percorsoId String
+  medicoId   String
+  pazienteId String
+  dataInizio DateTime
+  dataFine   DateTime?
+  stato      StatoPrescrizioneFito @default(ATTIVA)
+  note       String?
+  createdAt  DateTime              @default(now())
+
+  studio   Studio     @relation(fields: [studioId], references: [id])
+  percorso Percorso   @relation(fields: [percorsoId], references: [id])
+  medico   Utente     @relation(fields: [medicoId], references: [id])
+  paziente Paziente   @relation(fields: [pazienteId], references: [id])
+  prodotti PrescrizioneProdotto[]
+  fatture  Fattura[]
+
+  @@index([studioId, stato])
+}
+
+model PrescrizioneProdotto {
+  id             String   @id @default(uuid())
+  prescrizioneId String
+  prodottoId     String
+  posologia      String?
+  durataM        Int
+  prezzoMese     Decimal? @db.Decimal(10,2)  // override del prezzo catalogo; null = usa prezzoMese del prodotto
+
+  prescrizione PrescrizioneFito @relation(fields: [prescrizioneId], references: [id])
+  prodotto     ProdottoFito     @relation(fields: [prodottoId], references: [id])
+}
+
+model Fattura {
+  id             String       @id @default(uuid())
+  studioId       String
+  pazienteId     String
+  percorsoId     String?
+  appuntamentoId String?      @unique
+  bioscanId      String?      @unique
+  prescrizioneId String?
+  tipo           TipoFattura
+  numero         Int
+  anno           Int
+  importo        Decimal      @db.Decimal(10,2)
+  stato          StatoFattura @default(EMESSA)
+  dataEmissione  DateTime     @default(now())
+  dataScadenza   DateTime?
+  dataPagamento  DateTime?
+  metodoPagamento MetodoPagamento?
+  notePdf        String?
+  codiceSDI      String?
+  pec            String?
+  createdAt      DateTime     @default(now())
+
+  studio       Studio            @relation(fields: [studioId], references: [id])
+  paziente     Paziente          @relation(fields: [pazienteId], references: [id])
+  percorso     Percorso?         @relation(fields: [percorsoId], references: [id])
+  appuntamento Appuntamento?     @relation(fields: [appuntamentoId], references: [id])
+  bioscan      Bioscan?          @relation(fields: [bioscanId], references: [id])
+  prescrizione PrescrizioneFito? @relation(fields: [prescrizioneId], references: [id])
+
+  @@unique([studioId, anno, numero])
+  @@index([studioId, stato])
+  @@index([studioId, pazienteId])
+}
+
+// Origini di acquisizione pazienti — configurabili per studio.
+// Esempi predefiniti: Diretto, Marketing, Passaparola.
+model OrigineAcquisizione {
+  id       String  @id @default(uuid())
+  studioId String
+  nome     String
+  ordine   Int     @default(0)
+  attivo   Boolean @default(true)
+
+  studio Studio @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, ordine])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  studioId  String
+  entita    String
+  entitaId  String
+  azione    String
+  utenteId  String?
+  dettagli  Json?
+  createdAt DateTime @default(now())
+
+  utente Utente? @relation(fields: [utenteId], references: [id])
+
+  @@index([studioId, entita, entitaId])
+  @@index([createdAt])
+}
+
+// Prescrizione medica generica: documento emesso per un paziente da un operatore.
+// Contiene il testo della prescrizione, note aggiuntive, data emissione.
+// Stampabile/scaricabile in PDF direttamente dalla pagina paziente.
+model Prescrizione {
+  id         String   @id @default(uuid())
+  studioId   String
+  pazienteId String
+  medicoId   String
+  data       DateTime @default(now())  // data di emissione
+  contenuto  String   // testo della prescrizione (cosa si prescrive)
+  note       String?  // note interne aggiuntive
+  createdAt  DateTime @default(now())
+
+  studio   Studio   @relation(fields: [studioId], references: [id])
+  paziente Paziente @relation(fields: [pazienteId], references: [id])
+  medico   Utente   @relation(fields: [medicoId], references: [id])
+
+  @@index([studioId, pazienteId])
+}

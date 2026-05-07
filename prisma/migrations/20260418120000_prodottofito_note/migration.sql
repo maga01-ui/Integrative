@@ -1,0 +1,1 @@
+ALTER TABLE "ProdottoFito" ADD COLUMN IF NOT EXISTS "note" TEXT;

@@ -1,0 +1,23 @@
+# Dipendenze Node
+node_modules
+
+# Output di build / cache di Next.js e TypeScript
+.next
+dist
+tsconfig.tsbuildinfo
+
+# Log
+*.log
+
+# File di ambiente — NON committare mai (contengono segreti)
+.env
+.env.local
+.env.*.local
+
+# Spazzatura di Windows / Google Drive
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Configurazione locale degli strumenti dell'agente Claude
+.claude/
