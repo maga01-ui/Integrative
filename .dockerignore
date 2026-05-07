@@ -1,0 +1,43 @@
+# File NON inviati al daemon Docker durante il build.
+# Riducono la dimensione del "build context" e impediscono di includere
+# accidentalmente segreti o cache locali nell'immagine.
+
+# Dipendenze: vengono reinstallate dentro il container con `npm ci`
+node_modules
+
+# Output di build di Next.js (verrà rifatto dentro il container)
+.next
+dist
+
+# File di ambiente (i segreti vanno solo nelle env var di Cloud Run)
+.env
+.env.local
+.env.*.local
+
+# Cache TypeScript
+tsconfig.tsbuildinfo
+
+# Log
+*.log
+
+# Git e config locale
+.git
+.gitignore
+.github
+
+# IDE / agenti
+.vscode
+.claude
+
+# Spazzatura di Windows / Google Drive
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Documentazione (non serve nel container)
+README.md
+CLAUDE.MD
+
+# Il Dockerfile stesso non serve dentro l'immagine
+Dockerfile
+.dockerignore
