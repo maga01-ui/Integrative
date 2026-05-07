@@ -6,14 +6,17 @@ import { useState, useRef, useEffect } from 'react'
 
 interface Paziente { id: string; nome: string; cognome: string | null }
 
+// Stile di default per l'input — coerente con gli altri form dell'app
+const CLS_DEFAULT = 'mt-1.5 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200'
+
 export default function PazienteSearch({
   pazienti,
   defaultId = '',
-  cls,
+  cls = CLS_DEFAULT,   // opzionale: chi non passa cls usa lo stile standard
 }: {
   pazienti:  Paziente[]
   defaultId?: string
-  cls:       string
+  cls?:      string
 }) {
   // Trova il paziente preselezionato (es. arrivando dall'agenda paziente)
   const iniziale = pazienti.find(p => p.id === defaultId)
