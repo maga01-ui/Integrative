@@ -8,7 +8,9 @@ import { useState, useRef, useEffect } from 'react'
 interface Paziente {
   id:      string
   nome:    string
-  cognome: string
+  // Nel DB il cognome è opzionale (string | null). Sotto, dove lo
+  // visualizziamo, lo trattiamo con `?? ''` per evitare la stringa "null".
+  cognome: string | null
 }
 
 interface Props {
@@ -23,7 +25,7 @@ export default function PazienteSearch({ pazienti, defaultId, defaultLabel, requ
   // Trova il paziente pre-selezionato; se non trovato ma c'è un defaultLabel (caso lead AUTO) usalo
   const preselezionato = pazienti.find(p => p.id === defaultId)
   const labelPresel    = preselezionato
-    ? `${preselezionato.cognome} ${preselezionato.nome}`
+    ? `${preselezionato.cognome ?? ''} ${preselezionato.nome}`.trim()
     : (defaultLabel ?? '')
 
   const [query,          setQuery]          = useState(labelPresel)
@@ -47,12 +49,12 @@ export default function PazienteSearch({ pazienti, defaultId, defaultLabel, requ
   const filtrati = query.trim().length === 0
     ? pazienti
     : pazienti.filter(p => {
-        const full = `${p.cognome} ${p.nome}`.toLowerCase()
+        const full = `${p.cognome ?? ''} ${p.nome}`.toLowerCase()
         return query.toLowerCase().split(' ').every(t => full.includes(t))
       })
 
   function seleziona(p: Paziente) {
-    setQuery(`${p.cognome} ${p.nome}`)
+    setQuery(`${p.cognome ?? ''} ${p.nome}`.trim())
     setIdSelezionato(p.id)
     setAperto(false)
     document.dispatchEvent(new CustomEvent('pazienteSelezionato', { detail: { id: p.id } }))
@@ -94,7 +96,7 @@ export default function PazienteSearch({ pazienti, defaultId, defaultLabel, requ
                 onMouseDown={() => seleziona(p)}  // mousedown prima del blur
                 className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
               >
-                <span className="font-medium">{p.cognome}</span> {p.nome}
+                <span className="font-medium">{p.cognome ?? ''}</span> {p.nome}
               </button>
             </li>
           ))}
