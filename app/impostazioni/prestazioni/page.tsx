@@ -410,7 +410,7 @@ export default async function PrestazioniPage() {
 
 // ── Helpers UI condivisi tra le due tabelle ───────────────────────────────────
 
-function toggleBtn(action: () => Promise<never>, attivo: boolean) {
+function toggleBtn(action: () => Promise<void>, attivo: boolean) {
   return (
     <form action={action}>
       <button type="submit" title={attivo ? 'Disattiva' : 'Attiva'}
@@ -421,7 +421,7 @@ function toggleBtn(action: () => Promise<never>, attivo: boolean) {
   )
 }
 
-function ordineBtn(spSu: () => Promise<never>, spGiu: () => Promise<never>, idx: number, total: number) {
+function ordineBtn(spSu: () => Promise<void>, spGiu: () => Promise<void>, idx: number, total: number) {
   return (
     <span className="inline-flex flex-col gap-0.5">
       <form action={spSu}>

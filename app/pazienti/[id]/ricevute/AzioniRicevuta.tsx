@@ -19,7 +19,7 @@ const METODI = [
 ]
 
 export default function AzioniRicevuta({ itemId, onEmettiRicevuta, onRegistraPagamento, statoIniziale }: Props) {
-  const [stato,        setStato]        = useState<'da_emettere' | 'emessa' | 'pagamento'>(statoIniziale)
+  const [stato,        setStato]        = useState<'da_emettere' | 'emessa' | 'pagamento' | 'pagata'>(statoIniziale)
   const [metodo,       setMetodo]       = useState('CARTA')
   const [isPending,    startTransition] = useTransition()
 

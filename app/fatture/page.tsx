@@ -148,17 +148,19 @@ export default async function FatturePage({
     ...rangeDate,
   }
 
-  // Filtri comuni per la sezione "da gestire"
+  // Filtri comuni per la sezione "da gestire".
+  // `as const` serve a far inferire i literal types richiesti dai tipi Prisma
+  // (StatoAppuntamento, QueryMode), altrimenti `where` non è assegnabile.
   const filtriDG = {
     ...ws,
-    stato: 'COMPLETATO',
+    stato: 'COMPLETATO' as const,
     prezzoApplicato: { gt: 0 },
     ...(studioDE  ? { studioId: studioDE } : {}),
     ...(pazienteDE ? {
       paziente: {
         OR: [
-          { cognome: { contains: pazienteDE, mode: 'insensitive' } },
-          { nome:    { contains: pazienteDE, mode: 'insensitive' } },
+          { cognome: { contains: pazienteDE, mode: 'insensitive' as const } },
+          { nome:    { contains: pazienteDE, mode: 'insensitive' as const } },
         ]
       }
     } : {}),

@@ -142,8 +142,9 @@ export default async function CurePage({ params }: { params: any }) {
     }),
   ])
 
-  // Server actions con parametri pre-legati
-  const aggiungi = aggiungiCura.bind(null, pazienteId, studioId)
+  // Server actions con parametri pre-legati. Usiamo studioIdPaziente (string,
+  // mai null) perché aggiungiCura si aspetta string.
+  const aggiungi = aggiungiCura.bind(null, pazienteId, studioIdPaziente)
 
   return (
     <div className="space-y-6">

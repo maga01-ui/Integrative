@@ -31,7 +31,9 @@ export default async function CalendarioPage() {
   // Studi per il selettore: SUPERADMIN e MARKETING vedono tutti gli studi
   const studi = puoVedereTutti
     ? await prisma.studio.findMany({ where: { attivo: true }, select: { id: true, nome: true, citta: true }, orderBy: { nome: 'asc' } })
-    : await prisma.studio.findMany({ where: { id: studioId, attivo: true }, select: { id: true, nome: true, citta: true } })
+    // Sappiamo che studioId esiste qui perché il redirect a inizio funzione
+    // ne intercetta l'assenza per i ruoli che non sono SUPERADMIN/MARKETING.
+    : await prisma.studio.findMany({ where: { id: studioId!, attivo: true }, select: { id: true, nome: true, citta: true } })
 
   // studioIdEffettivo: per SUPERADMIN senza studio proprio, usa il primo studio disponibile
   const studioIdEffettivo = studioId ?? studi[0]?.id ?? ''

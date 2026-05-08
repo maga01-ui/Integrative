@@ -111,7 +111,8 @@ export default async function PazienteLayout({
     // Conta le prescrizioni mediche generiche
     prisma.prescrizione.count({ where: { pazienteId: id } }),
   ])
-  const c = conteggi?._count ?? {}
+  // Default tipato così TypeScript sa quali campi esistono anche in fallback.
+  const c = conteggi?._count ?? { appuntamenti: 0, bioscan: 0, prescrizioni: 0, fatture: 0, assegnamenti: 0 }
 
   // true = la sezione ha almeno un contenuto → bottone colorato
   const haContenuto: Record<string, boolean> = {

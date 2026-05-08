@@ -282,7 +282,7 @@ export default async function PazientiPage({
     if (p.bioscan.some((b: any) => !b.refertoConsegnato)) return true
 
     // 2. Appuntamenti futuri (non cancellati, inizio > now)
-    if (p.appuntamenti.some(a => new Date(a.inizio) > now && a.stato !== 'CANCELLATO')) return true
+    if (p.appuntamenti.some((a: any) => new Date(a.inizio) > now && a.stato !== 'CANCELLATO')) return true
 
     // 3. Programma non concluso: ATTIVO con sessioni ancora da fare, oppure SOSPESO.
     // Un programma ATTIVO con sessioniCompletate >= sessioniTotali è "di fatto concluso":
@@ -298,11 +298,11 @@ export default async function PazientiPage({
     if (p.prescrizioni.length > 0) return true
 
     // 5. Appuntamenti da riprogrammare
-    if (p.appuntamenti.some(a => a.stato === 'DA_RIPROGRAMMARE')) return true
+    if (p.appuntamenti.some((a: any) => a.stato === 'DA_RIPROGRAMMARE')) return true
 
     // 6. Appuntamento in attesa (FISSATO/CONFERMATO anche nel passato — non ancora completato)
     //    Copre il caso del paziente appena convertito da lead con appuntamento odierno
-    if (p.appuntamenti.some(a => a.stato === 'FISSATO' || a.stato === 'CONFERMATO')) return true
+    if (p.appuntamenti.some((a: any) => a.stato === 'FISSATO' || a.stato === 'CONFERMATO')) return true
 
     // 7. Programma concluso (stato COMPLETATO oppure tutte le sessioni finite) senza bioscan di controllo
     const haProgrammaConcluso = p.assegnamenti.some((a: any) =>

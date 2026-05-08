@@ -59,11 +59,12 @@ export default async function ProfittiDettaglioPage({
   // Compenso orario: prende il primo record (di solito un solo team)
   const compensoOra = Number(collRecords[0]?.compensoOra ?? 0)
 
-  // Appuntamenti completati dal collaboratore nel mese
+  // Appuntamenti completati dal collaboratore nel mese.
+  // `as const` necessario per far inferire il literal type StatoAppuntamento.
   const whereApp = {
     ...ws,
     medicoId: utenteId,
-    stato:    'COMPLETATO',
+    stato:    'COMPLETATO' as const,
     inizio:   { gte: inizioMese, lt: fineMese },
   }
 
