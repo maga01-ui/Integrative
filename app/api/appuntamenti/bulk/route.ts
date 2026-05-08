@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 
 // ── Struttura di ogni appuntamento nella richiesta ───────────────────────────
 type AppuntamentoBulkInput = {
@@ -49,7 +50,9 @@ export async function POST(req: NextRequest) {
   // Crea tutti gli appuntamenti in una singola transazione atomica
   const creati = await prisma.$transaction(
     appuntamenti.map(a => {
-      const inizio = new Date(a.inizio)
+      // Il client (PrenotazioniMultiple) invia "YYYY-MM-DDTHH:mm:ss" senza
+      // fuso: interpretiamo SEMPRE come ora italiana (vedi lib/datetime.ts).
+      const inizio = parseDataOraItalia(a.inizio)
       const fine   = new Date(inizio.getTime() + a.durataMinuti * 60 * 1000)
       return prisma.appuntamento.create({
         data: {

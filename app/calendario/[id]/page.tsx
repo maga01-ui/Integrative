@@ -12,6 +12,7 @@ import { authOptions } from '@/lib/auth'
 import { creaOaggiornaFatturaPerAppuntamento } from '@/lib/fatturazione'
 import { sincronizzaSessioniCompletate } from '@/lib/sessioniCompletate'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 
 // ── Helper: collega letturaRefertoId al bioscan più recente non ancora collegato ──
 // Chiamato ogni volta che una lettura referto diventa COMPLETATO, da qualsiasi percorso.
@@ -43,7 +44,8 @@ async function modificaAppuntamento(id: string, formData: FormData) {
   const isBioscan           = prestazioneIdRaw.startsWith('BIOSCAN:')
   const bioscanTipId        = isBioscan ? prestazioneIdRaw.replace('BIOSCAN:', '') : null
   const prestazioneId       = isBioscan ? null : (programmaPazienteId ? null : (prestazioneIdRaw || null))
-  const inizio           = new Date(formData.get('inizio') as string)
+  // Interpretiamo SEMPRE come ora italiana: vedi lib/datetime.ts.
+  const inizio           = parseDataOraItalia(formData.get('inizio') as string)
 
   // Carica i dati della prestazione (o tipologia bioscan) e l'appuntamento corrente
   const [prestazioneDB, bioscanTipDB, appCorrente] = await Promise.all([

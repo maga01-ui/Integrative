@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 import { getPatientOrRedirect } from '../../patientUtilsFinal'
 import BackButton from '@/components/ui/BackButton'
 import NuovoBioscanForm from './NuovoBioscanForm'
@@ -39,7 +40,8 @@ async function creaBioscan(pazienteId: string, studioId: string, formData: FormD
     }
   }
 
-  const inizio = new Date(dataStr)
+  // Interpretiamo SEMPRE come ora italiana: vedi lib/datetime.ts.
+  const inizio = parseDataOraItalia(dataStr)
   const fine   = new Date(inizio.getTime() + durataMinuti * 60 * 1000)
   const prezzoDecimal = prezzo ?? 0
 

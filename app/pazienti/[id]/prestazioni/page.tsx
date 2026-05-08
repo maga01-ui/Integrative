@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 import { getTenantContext } from '@/lib/tenant'
 import { getPatientOrRedirect } from '../patientUtilsFinal'
 import AggiuntaPrestazioneToggle from './AggiuntaPrestazioneToggle'
@@ -33,8 +34,9 @@ async function aggiungiCura(pazienteId: string, studioId: string, formData: Form
   })
   if (!prestazione) return
 
-  // Calcola orario inizio e fine
-  const inizio = new Date(inizioStr)
+  // Calcola orario inizio e fine.
+  // Interpretiamo SEMPRE come ora italiana: vedi lib/datetime.ts.
+  const inizio = parseDataOraItalia(inizioStr)
   const durata = Number(durataStr) || prestazione.durataMinuti
   const fine   = new Date(inizio.getTime() + durata * 60 * 1000)
 

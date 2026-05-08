@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 import TipoAppuntamentoSelect from './TipoAppuntamentoSelect'
 import FormStudioWrapper from './FormStudioWrapper'
 import PazienteSearch from './PazienteSearch'
@@ -19,7 +20,9 @@ async function creaAppuntamento(formData: FormData) {
   const prestazioneIdRaw = formData.get('prestazioneId') as string
   // Se bioscanId è presente, questo appuntamento è una lettura referto collegata a quel bioscan
   const bioscanId        = (formData.get('bioscanId') as string) || null
-  const inizio           = new Date(formData.get('inizio') as string)
+  // Interpretiamo SEMPRE come ora italiana (Europe/Rome), così il salvataggio
+  // è corretto sia in locale sia su Cloud Run (che gira in UTC).
+  const inizio           = parseDataOraItalia(formData.get('inizio') as string)
 
   // Riconosce se è una tipologia bioscan (ID prefissato "BIOSCAN:") o un programma
   const programmaPazienteId = (formData.get('programmaPazienteId') as string) || null

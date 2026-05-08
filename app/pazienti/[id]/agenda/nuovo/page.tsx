@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 import { getPatientOrRedirect } from '../../patientUtilsFinal'
 import TipoAppuntamentoSelect from '@/app/calendario/nuovo/TipoAppuntamentoSelect'
 import FormStudioWrapper from '@/app/calendario/nuovo/FormStudioWrapper'
@@ -21,7 +22,8 @@ async function creaAppuntamentoPaziente(formData: FormData) {
   const studioId         = formData.get('studioId') as string
   const prestazioneIdRaw = formData.get('prestazioneId') as string
   const bioscanId        = (formData.get('bioscanId') as string) || null
-  const inizio           = new Date(formData.get('inizio') as string)
+  // Interpretiamo SEMPRE come ora italiana: vedi lib/datetime.ts.
+  const inizio           = parseDataOraItalia(formData.get('inizio') as string)
 
   const programmaPazienteId = (formData.get('programmaPazienteId') as string) || null
   const isBioscan           = prestazioneIdRaw.startsWith('BIOSCAN:')

@@ -6,6 +6,7 @@ import { redirect, notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseDataOraItalia } from '@/lib/datetime'
 import { creaOaggiornaFatturaPerAppuntamento } from '@/lib/fatturazione'
 import { sincronizzaSessioniCompletate } from '@/lib/sessioniCompletate'
 import TipoAppuntamentoSelect from '@/app/calendario/nuovo/TipoAppuntamentoSelect'
@@ -64,7 +65,8 @@ export default async function PazienteModificaAppuntamento({
     const isBioscan           = prestazioneIdRaw.startsWith('BIOSCAN:')
     const bioscanTipId        = isBioscan ? prestazioneIdRaw.replace('BIOSCAN:', '') : null
     const prestazioneId       = isBioscan ? null : (programmaPazienteId ? null : (prestazioneIdRaw || null))
-    const inizio              = new Date(formData.get('inizio') as string)
+    // Interpretiamo SEMPRE come ora italiana: vedi lib/datetime.ts.
+    const inizio              = parseDataOraItalia(formData.get('inizio') as string)
 
     const [prestazioneDB, bioscanTipDB, appCorrente] = await Promise.all([
       prestazioneId
