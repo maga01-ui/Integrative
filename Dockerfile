@@ -26,11 +26,7 @@ COPY package.json package-lock.json ./
 COPY prisma ./prisma
 
 # `npm ci` = install pulito basato sul lock file.
-# `--legacy-peer-deps` ignora i conflitti sui peer dependencies (es. eslint
-# 8.x vs eslint-config-next 16.x che vuole eslint 9.x). Sono dipendenze di
-# dev che non influenzano il runtime, e il lint è disabilitato in build
-# tramite next.config.js → niente impatto.
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 
 # ── Stage 2: builder ─────────────────────────────────────────────────────────
