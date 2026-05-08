@@ -87,7 +87,7 @@ const FILTRO_PRESTAZIONI = '__PRESTAZIONI__'
 
 // Prestazioni dalla tabella Prestazione mostrate singolarmente (prima del bottone raggruppato)
 const PRESTAZIONI_SINGOLE: { key: string; label: string; colore: string }[] = [
-  { key: 'TRATTAMENTO',  label: 'Standard',     colore: '#10b981' },
+  { key: 'TRATTAMENTO',  label: 'Programma',    colore: '#10b981' },
   { key: 'MANTENIMENTO', label: 'Mantenimento',  colore: '#94a3b8' },
 ]
 

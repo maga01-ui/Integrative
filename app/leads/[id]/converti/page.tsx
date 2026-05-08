@@ -10,7 +10,7 @@ import { redirect, notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOriginiPerStudio, getOriginiTutteAttive } from '@/lib/origini'
+import { getOriginiTutteAttive } from '@/lib/origini'
 import NuovoPazienteForm from '@/app/pazienti/nuovo/NuovoPazienteForm'
 import BackButton from '@/components/ui/BackButton'
 
@@ -176,12 +176,9 @@ export default async function ConvertiLeadPage({
     redirect(`/pazienti/${lead.convertitoPazienteId}`)
   }
 
-  // Carica le origini (manuali + referral) per il select nel form
-  const origini = utente?.ruolo === 'SUPERADMIN'
-    ? await getOriginiTutteAttive()
-    : utente?.studioId
-      ? await getOriginiPerStudio(utente.studioId)
-      : []
+  // Carica le origini (manuali + referral) per il select nel form.
+  // Sono GLOBALI: stessa lista per tutti gli utenti e per tutti gli studi.
+  const origini = await getOriginiTutteAttive()
 
   // Lega leadId, next e studioId alla server action tramite .bind
   // studioId viene passato come fallback pre-calcolato (sicuro: risolto lato server)

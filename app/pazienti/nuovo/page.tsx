@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOriginiPerStudio, getOriginiTutteAttive } from '@/lib/origini'
+import { getOriginiTutteAttive } from '@/lib/origini'
 import NuovoPazienteForm from './NuovoPazienteForm'
 import BackButton from '@/components/ui/BackButton'
 
@@ -70,17 +70,9 @@ export default async function NuovoPazientePage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
-  const userId = (session.user as { id?: string }).id!
-  const utente = await prisma.utente.findUnique({ where: { id: userId }, select: { studioId: true, ruolo: true } })
-
   // Carica le origini attive (manuali + referral) tramite l'helper.
-  // - SUPERADMIN (senza studio): vede tutte le origini di tutti gli studi
-  // - Altri ruoli: solo quelle del proprio studio
-  const origini = utente?.ruolo === 'SUPERADMIN'
-    ? await getOriginiTutteAttive()
-    : utente?.studioId
-      ? await getOriginiPerStudio(utente.studioId)
-      : []
+  // Sono GLOBALI: stessa lista per tutti gli utenti e per tutti gli studi.
+  const origini = await getOriginiTutteAttive()
 
   return (
     <div className="space-y-6">

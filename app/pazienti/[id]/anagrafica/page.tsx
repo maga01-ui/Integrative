@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getTenantContext } from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
-import { getOriginiPerStudio, getOriginiTutteAttive } from '@/lib/origini'
+import { getOriginiTutteAttive } from '@/lib/origini'
 import NuovoPazienteForm from '../../nuovo/NuovoPazienteForm'
 
 function capitalizza(val: string | null | undefined): string | null {
@@ -70,11 +70,8 @@ export default async function AnagraficaPage({ params }: { params: any }) {
   if (ctx.studioId && paziente.studioId !== ctx.studioId) redirect('/pazienti')
 
   // Carica le origini attive (manuali + referral) tramite l'helper.
-  // Filtra per studio del paziente: in modifica anagrafica vediamo solo le
-  // origini coerenti con lo studio in cui il paziente è registrato.
-  const origini = paziente.studioId
-    ? await getOriginiPerStudio(paziente.studioId)
-    : await getOriginiTutteAttive()
+  // Sono GLOBALI: stessa lista per tutti gli utenti e per tutti gli studi.
+  const origini = await getOriginiTutteAttive()
 
   // Legge sesso con raw SQL (campo nuovo non ancora nel client Prisma generato)
   const [sessoRow] = await prisma.$queryRaw<{ sesso: string | null }[]>`

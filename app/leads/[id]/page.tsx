@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOriginiPerStudio, getOriginiTutteAttive } from '@/lib/origini'
+import { getOriginiTutteAttive } from '@/lib/origini'
 import SelectProvincia from '@/components/ui/SelectProvincia'
 import BackButton from '@/components/ui/BackButton'
 import TelefonoInput from '@/components/ui/TelefonoInput'
@@ -125,17 +125,9 @@ export default async function DettaglioLeadPage({
     orderBy: { nome: 'asc' }
   })
 
-  // Carica le origini (manuali + referral) — stessa logica di anagrafica paziente
-  const userId = (session.user as { id?: string }).id!
-  const utente = await prisma.utente.findUnique({
-    where:  { id: userId },
-    select: { studioId: true, ruolo: true },
-  })
-  const origini = utente?.ruolo === 'SUPERADMIN'
-    ? await getOriginiTutteAttive()
-    : utente?.studioId
-      ? await getOriginiPerStudio(utente.studioId)
-      : []
+  // Carica le origini (manuali + referral) — sono GLOBALI: stessa lista
+  // per tutti gli utenti e per tutti gli studi (vedi /impostazioni/origini).
+  const origini = await getOriginiTutteAttive()
 
   // Lega l'id del lead alle server action tramite .bind (pattern affidabile)
   const nascondi = nascondiLead.bind(null, lead.id)
@@ -311,9 +303,11 @@ export default async function DettaglioLeadPage({
         {/* Canale e campagna */}
         <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Canale *</label>
+            <label className="block text-sm font-medium text-slate-700">Origine *</label>
+            {/* Il campo nel DB si chiama ancora "canale" per compatibilità con
+                i lead esistenti; nell'interfaccia lo mostriamo come "Origine". */}
             <select name="canale" required defaultValue={lead.canale ?? ''} className={cls}>
-              <option value="">— Seleziona canale —</option>
+              <option value="">— Seleziona origine —</option>
               {origini.map((o: { id: string; nome: string }) => (
                 <option key={o.id} value={o.nome}>{o.nome}</option>
               ))}

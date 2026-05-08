@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOriginiPerStudio, getOriginiTutteAttive } from '@/lib/origini'
+import { getOriginiTutteAttive } from '@/lib/origini'
 import SelectProvincia from '@/components/ui/SelectProvincia'
 import BackButton from '@/components/ui/BackButton'
 import TelefonoInput from '@/components/ui/TelefonoInput'
@@ -64,18 +64,10 @@ export default async function NuovoLeadPage() {
   })
 
   // Carica le origini attive (manuali + referral) tramite l'helper.
-  // - SUPERADMIN: tutte le origini
-  // - Altri ruoli: solo quelle del proprio studio
-  const userId = (session.user as { id?: string }).id!
-  const utente = await prisma.utente.findUnique({
-    where:  { id: userId },
-    select: { studioId: true, ruolo: true },
-  })
-  const origini = utente?.ruolo === 'SUPERADMIN'
-    ? await getOriginiTutteAttive()
-    : utente?.studioId
-      ? await getOriginiPerStudio(utente.studioId)
-      : []
+  // Sono GLOBALI: stessa lista per tutti gli utenti e per tutti gli studi
+  // (vedi /impostazioni/origini). Così ogni utente — incluso MARKETING che
+  // non ha studioId — vede sempre il campo "Origine" compilato.
+  const origini = await getOriginiTutteAttive()
 
   return (
     <div className="space-y-6">
@@ -100,7 +92,10 @@ export default async function NuovoLeadPage() {
         {/* Provenienza */}
         <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Canale *</label>
+            <label className="block text-sm font-medium text-slate-700">Origine *</label>
+            {/* Il campo nel DB si chiama ancora "canale" per compatibilità con
+                i lead esistenti; nell'interfaccia lo mostriamo come "Origine"
+                per allinearlo alla terminologia di /impostazioni/origini. */}
             <select name="canale" required className={cls}>
               <option value="">Seleziona…</option>
               {origini.map(o => (
