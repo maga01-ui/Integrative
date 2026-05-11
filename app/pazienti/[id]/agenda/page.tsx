@@ -68,9 +68,15 @@ export default async function AgendaPage({ params }: { params: any }) {
   ])
 
   const ora = new Date()
-  const appFuturi    = appuntamenti.filter(a => a.stato !== 'CANCELLATO' && new Date(a.inizio) > ora)
-  const appPassati   = appuntamenti.filter(a => a.stato !== 'CANCELLATO' && new Date(a.inizio) <= ora)
-  const appAnnullati = appuntamenti.filter(a => a.stato === 'CANCELLATO')
+  // Stati considerati "annullati" nella vista paziente:
+  // - CANCELLATO: appuntamento cancellato
+  // - NO_SHOW:   paziente non presentato
+  // Vengono raggruppati insieme nella sezione "Appuntamenti annullati",
+  // ma ogni riga conserva il proprio badge di stato per distinguerli.
+  const STATI_ANNULLATI = ['CANCELLATO', 'NO_SHOW']
+  const appFuturi    = appuntamenti.filter(a => !STATI_ANNULLATI.includes(a.stato) && new Date(a.inizio) > ora)
+  const appPassati   = appuntamenti.filter(a => !STATI_ANNULLATI.includes(a.stato) && new Date(a.inizio) <= ora)
+  const appAnnullati = appuntamenti.filter(a => STATI_ANNULLATI.includes(a.stato))
 
   // Server action con pazienteId già legato (per revalidatePath)
   const cancella = cancellaAppuntamento

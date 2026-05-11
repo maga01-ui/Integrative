@@ -40,19 +40,21 @@ export default function NuovoBioscanForm({
   return (
     <form action={action} className="space-y-5">
 
-      {/* Tipologia bioscan */}
+      {/* Tipologia bioscan — larghezza ridotta a metà tramite grid a 2 colonne */}
       {tipologie.length > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Tipologia</label>
-          <select name="tipologiaId" defaultValue={tipologiaDefaultId}
-            onChange={onTipologiaChange} className={cls}>
-            <option value="">— seleziona tipologia —</option>
-            {tipologie.map(t => (
-              <option key={t.id} value={t.id}>
-                {t.tipologia} — {t.durataMinuti} min
-              </option>
-            ))}
-          </select>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Tipologia</label>
+            <select name="tipologiaId" defaultValue={tipologiaDefaultId}
+              onChange={onTipologiaChange} className={cls}>
+              <option value="">— seleziona tipologia —</option>
+              {tipologie.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.tipologia} — {t.durataMinuti} min
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 

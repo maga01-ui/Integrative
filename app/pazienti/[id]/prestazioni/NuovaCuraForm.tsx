@@ -78,35 +78,15 @@ export default function NuovaCuraForm({
         </div>
       </div>
 
-      {/* Selettore data/ora con griglia disponibilità sale e operatori */}
-      {/* Il componente scrive un campo hidden name="inizio" con il valore combinato */}
+      {/* Selettore data/ora con griglia disponibilità sale e operatori.
+          DatePickerCalendario gestisce internamente ora, sala e operatore tramite il popup
+          e scrive i campi hidden "inizio", "salaId" e "medicoId" letti dalla Server Action.
+          Non duplichiamo i select qui: ora/sala/operatore si modificano SOLO dal popup. */}
       <DatePickerCalendario
         sale={sale}
         operatori={operatori}
         studioId={studioId}
       />
-
-      {/* Operatore — name="medicoId" perché DatePickerCalendario usa impostaSelect('medicoId') */}
-      <div>
-        <label className="text-sm font-medium text-slate-700">Operatore *</label>
-        <select name="medicoId" required className={cls}>
-          <option value="">— seleziona —</option>
-          {operatori.map(o => (
-            <option key={o.id} value={o.id}>{o.cognome} {o.nome}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Sala — name="salaId" come atteso da DatePickerCalendario */}
-      <div>
-        <label className="text-sm font-medium text-slate-700">Sala *</label>
-        <select name="salaId" required className={cls}>
-          <option value="">— seleziona —</option>
-          {sale.map(s => (
-            <option key={s.id} value={s.id}>{s.nome}</option>
-          ))}
-        </select>
-      </div>
 
       {/* Note */}
       <div>

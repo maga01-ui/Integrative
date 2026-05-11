@@ -81,30 +81,33 @@ export default function FormStudioWrapper({
 
   return (
     <>
-      {/* ── Selettore studio ─────────────────────────────────────────── */}
-      <div>
-        <label className="block text-sm font-medium text-slate-700">Studio *</label>
-        {mostraSelect ? (
-          <select
-            name="studioId"
-            value={studioId}
-            onChange={e => setStudioId(e.target.value)}
-            className={cls}
-          >
-            {studi.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.nome}{s.citta ? ` — ${s.citta}` : ''}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <>
-            <input type="hidden" name="studioId" value={studioId} />
-            <div className={`${cls} bg-slate-100 text-slate-500 cursor-not-allowed`}>
-              {studi[0]?.nome ?? studioId}
-            </div>
-          </>
-        )}
+      {/* ── Selettore studio ───────────────────────────────────────────
+          Larghezza ridotta a metà tramite grid a 2 colonne. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Studio *</label>
+          {mostraSelect ? (
+            <select
+              name="studioId"
+              value={studioId}
+              onChange={e => setStudioId(e.target.value)}
+              className={cls}
+            >
+              {studi.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}{s.citta ? ` — ${s.citta}` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <input type="hidden" name="studioId" value={studioId} />
+              <div className={`${cls} bg-slate-100 text-slate-500 cursor-not-allowed`}>
+                {studi[0]?.nome ?? studioId}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {caricando && (

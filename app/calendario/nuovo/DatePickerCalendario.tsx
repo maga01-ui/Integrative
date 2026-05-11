@@ -140,13 +140,18 @@ export default function DatePickerCalendario({ sale, operatori, studioId, defaul
   return (
     <div className="space-y-3">
 
-      {/* Campi hidden letti dalla Server Action */}
+      {/* Campi hidden letti dalla Server Action.
+          L'ora NON ha più un campo visibile nella pagina: si modifica solo dal popup.
+          Quando ora cambia (dentro il popup) il valoreInizio si aggiorna automaticamente. */}
       <input type="hidden" name="inizio"   value={valoreInizio} />
       <input type="hidden" name="salaId"   value={salaSelezionata} />
       <input type="hidden" name="medicoId" value={medicoSelezionato} />
 
-      {/* Riga: selezione DATA + ORA affiancate */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Selezione DATA — unico campo editabile nella pagina.
+          Quando si sceglie la data si apre automaticamente il popup
+          dove poi si scelgono ora, sala e operatore.
+          Larghezza ridotta a metà (come il select Prestazione) usando un grid a 2 colonne. */}
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-xs text-slate-500 mb-0.5">Giorno</label>
           <input
@@ -157,27 +162,21 @@ export default function DatePickerCalendario({ sale, operatori, studioId, defaul
             className={inputCls}
           />
         </div>
-        <div>
-          <label className="block text-xs text-slate-500 mb-0.5">Ora</label>
-          <select
-            value={ora}
-            onChange={e => setOra(e.target.value)}
-            className={selectCls}
-          >
-            {ORARI.map(o => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <p className="text-xs text-slate-400">
         L&apos;ora di fine viene calcolata automaticamente dalla durata della prestazione.
       </p>
 
-      {/* Bottone apri disponibilità + riepilogo selezione — stessa riga */}
+      {/* Riepilogo selezione (non editabile dalla pagina) + bottone per aprire il popup.
+          Ora, sala e operatore appaiono qui come chip dopo aver chiuso il popup;
+          per modificarli bisogna riaprire il popup. */}
       {data && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
+          {/* Chip ORA — solo lettura: l'ora si cambia esclusivamente dal popup */}
+          <span className="rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-700">
+            Ora: {ora}
+          </span>
           {salaSelezionata && (
             <span className="rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-700">
               Sala: {salaNome || sale.find(s => s.id === salaSelezionata)?.nome || ''}
@@ -193,7 +192,7 @@ export default function DatePickerCalendario({ sale, operatori, studioId, defaul
             onClick={() => setModalAperto(true)}
             className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 font-medium text-indigo-700 hover:bg-indigo-100 transition"
           >
-            {salaSelezionata || medicoSelezionato ? '✏️ Modifica sala e operatore' : '📅 Seleziona sala e operatore'}
+            {salaSelezionata || medicoSelezionato ? '✏️ Modifica ora, sala e operatore' : '📅 Seleziona ora, sala e operatore'}
           </button>
         </div>
       )}

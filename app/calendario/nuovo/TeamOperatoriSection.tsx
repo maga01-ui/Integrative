@@ -43,22 +43,25 @@ export default function TeamOperatoriSection({
 
   return (
     <>
-      {/* Team — visibile solo se lo studio ha 2 o più team attivi */}
+      {/* Team — visibile solo se lo studio ha 2 o più team attivi.
+          Larghezza ridotta a metà (come Tipologia e Giorno) tramite grid a 2 colonne. */}
       {mostraSelectTeam ? (
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Team *</label>
-          <select
-            name="teamId"
-            required
-            value={teamId}
-            onChange={e => setTeamId(e.target.value)}
-            className={cls}
-          >
-            <option value="">Seleziona team…</option>
-            {team.map(t => (
-              <option key={t.id} value={t.id}>{t.nome}</option>
-            ))}
-          </select>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Team *</label>
+            <select
+              name="teamId"
+              required
+              value={teamId}
+              onChange={e => setTeamId(e.target.value)}
+              className={cls}
+            >
+              <option value="">Seleziona team…</option>
+              {team.map(t => (
+                <option key={t.id} value={t.id}>{t.nome}</option>
+              ))}
+            </select>
+          </div>
         </div>
       ) : (
         /* 0 team → stringa vuota; 1 team → id automatico */

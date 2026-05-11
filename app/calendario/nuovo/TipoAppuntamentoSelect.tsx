@@ -286,19 +286,22 @@ export default function TipoAppuntamentoSelect({
 
       </div>
 
-      {/* Prezzo applicato — condiviso tra tutti e tre i box */}
-      <div>
-        <label className="block text-sm font-medium text-slate-700">Prezzo applicato (€)</label>
-        <input
-          type="number"
-          name="prezzoApplicato"
-          step="0.01"
-          min="0"
-          value={prezzo}
-          onChange={e => setPrezzo(e.target.value)}
-          placeholder="0.00"
-          className={inputN}
-        />
+      {/* Prezzo applicato — condiviso tra tutti e tre i box.
+          Larghezza ridotta a metà tramite grid a 2 colonne. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Prezzo applicato (€)</label>
+          <input
+            type="number"
+            name="prezzoApplicato"
+            step="0.01"
+            min="0"
+            value={prezzo}
+            onChange={e => setPrezzo(e.target.value)}
+            placeholder="0.00"
+            className={inputN}
+          />
+        </div>
       </div>
 
     </div>
