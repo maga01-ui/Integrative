@@ -15,7 +15,7 @@ const METODI = [
   { v: 'CARTA',    l: 'Carta' },
   { v: 'CASH',     l: 'Contanti' },
   { v: 'BONIFICO', l: 'Bonifico' },
-  { v: 'TOKEN',    l: 'Token' },
+  { v: 'OMAGGIO',  l: 'Omaggio' },
 ]
 
 export default function AzioniFatturaRow({ itemId, statoIniziale, onEmettiRicevuta, onRegistraPagamento }: Props) {

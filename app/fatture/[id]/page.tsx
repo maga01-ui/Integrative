@@ -29,7 +29,7 @@ async function modificaFattura(id: string, formData: FormData) {
       stato: stato as never,
       dataScadenza: dataScadenzaValue ? new Date(dataScadenzaValue) : null,
       dataPagamento: pagato ? (dataPagValue ? new Date(dataPagValue) : new Date()) : null,
-      metodoPagamento: metodoPagamentoValue ? (metodoPagamentoValue as 'CASH' | 'BONIFICO' | 'CARTA' | 'TOKEN') : null,
+      metodoPagamento: metodoPagamentoValue ? (metodoPagamentoValue as 'CASH' | 'BONIFICO' | 'CARTA' | 'OMAGGIO') : null,
       notePdf: (formData.get('notePdf') as string) || null,
     },
   })
@@ -143,7 +143,7 @@ export default async function FatturaDetailPage({ params }: { params: Promise<{ 
               <option value="CASH">Cash</option>
               <option value="BONIFICO">Bonifico</option>
               <option value="CARTA">Carta</option>
-              <option value="TOKEN">Token</option>
+              <option value="OMAGGIO">Omaggio</option>
             </select>
           </div>
         </div>

@@ -91,7 +91,7 @@ enum MetodoPagamento {
   CASH
   BONIFICO
   CARTA
-  TOKEN
+  OMAGGIO
 }
 
 enum StatoPrescrizioneFito {

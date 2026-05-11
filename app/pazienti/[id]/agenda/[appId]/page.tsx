@@ -424,7 +424,7 @@ export default async function PazienteModificaAppuntamento({
                   <option value="CASH">Cash</option>
                   <option value="BONIFICO">Bonifico</option>
                   <option value="CARTA">Carta</option>
-                  <option value="TOKEN">Token</option>
+                  <option value="OMAGGIO">Omaggio</option>
                 </select>
               </div>
             </div>

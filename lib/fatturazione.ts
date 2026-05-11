@@ -62,7 +62,7 @@ export async function creaOaggiornaFatturaPerBioscan(bioscan: {
   prezzo: number
 }, options: {
   pagato: boolean
-  metodoPagamento?: 'CASH' | 'BONIFICO' | 'CARTA' | 'TOKEN'
+  metodoPagamento?: 'CASH' | 'BONIFICO' | 'CARTA' | 'OMAGGIO'
   dataPagamento?: Date
 }) {
   const importo = bioscan.prezzo
@@ -115,7 +115,7 @@ export async function creaOaggiornaFatturaPerAppuntamento(appuntamento: {
   prezzoApplicato: number | string
 }, options: {
   pagato: boolean
-  metodoPagamento?: 'CASH' | 'BONIFICO' | 'CARTA' | 'TOKEN'
+  metodoPagamento?: 'CASH' | 'BONIFICO' | 'CARTA' | 'OMAGGIO'
   dataPagamento?: Date
 }) {
   const importo = Number(appuntamento.prezzoApplicato ?? 0)
