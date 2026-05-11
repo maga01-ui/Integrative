@@ -65,7 +65,7 @@ export default function SelectNazione({
       <label className="text-sm font-medium text-slate-700">
         {label}{required && ' *'}
       </label>
-      <select name={name} defaultValue={defaultValue || 'Italia'} className={cls}>
+      <select name={name} required={required} defaultValue={defaultValue || 'Italia'} className={cls}>
         {NAZIONI.map(n => (
           <option key={n} value={n}>{n}</option>
         ))}

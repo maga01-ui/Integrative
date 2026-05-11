@@ -128,7 +128,7 @@ export default function SelectProvincia({
       <label className="text-sm font-medium text-slate-700">
         {label}{required && ' *'}
       </label>
-      <select name={name} defaultValue={defaultValue.toUpperCase()} className={cls}>
+      <select name={name} required={required} defaultValue={defaultValue.toUpperCase()} className={cls}>
         <option value="">— seleziona —</option>
         {PROVINCE.map(p => (
           <option key={p.s} value={p.s}>{p.s} – {p.n}</option>

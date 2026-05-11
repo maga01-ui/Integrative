@@ -28,3 +28,48 @@ body {
     @apply text-slate-600;
   }
 }
+
+/* ── Validazione campi obbligatori ──────────────────────────────────────────
+   Quando l'utente prova a salvare il form e un campo `required` è vuoto
+   (oppure esce da un campo lasciandolo non valido), la pseudo-classe
+   `:user-invalid` lo marca automaticamente. Lo stile NON si attiva al
+   primo caricamento — solo dopo l'interazione/tentativo di submit.
+   In questo modo, su TUTTE le pagine, i campi mancanti diventano rossi
+   (bordo + sfondo) e l'etichetta sopra diventa rossa con scritta "obbligatorio".
+   Funziona automaticamente senza modificare i singoli form. */
+@layer base {
+  /* Bordo + sfondo rossi sui campi non validi */
+  input:user-invalid,
+  select:user-invalid,
+  textarea:user-invalid {
+    @apply border-red-500 bg-red-50;
+  }
+  /* Quando il campo non valido è in focus, rinforza i colori rossi */
+  input:user-invalid:focus,
+  select:user-invalid:focus,
+  textarea:user-invalid:focus {
+    @apply border-red-600 ring-red-200;
+  }
+
+  /* Etichetta rossa: la <label> è subito prima del campo, dentro lo stesso <div>.
+     Il selettore :has() permette di colorare la label solo se il campo è invalid. */
+  div:has(> input:user-invalid) > label,
+  div:has(> select:user-invalid) > label,
+  div:has(> textarea:user-invalid) > label,
+  /* Caso TelefonoInput: input dentro un <div> annidato */
+  div:has(input:user-invalid) > label,
+  /* Caso label che avvolge il radio (es. radio "Sesso") */
+  label:has(> input:user-invalid) {
+    @apply text-red-600;
+  }
+
+  /* Aggiunge automaticamente la scritta "(obbligatorio)" dopo l'etichetta
+     quando il campo non è compilato — rende esplicito cosa manca. */
+  div:has(> input:user-invalid) > label::after,
+  div:has(> select:user-invalid) > label::after,
+  div:has(> textarea:user-invalid) > label::after,
+  div:has(input:user-invalid) > label::after {
+    content: ' — obbligatorio';
+    @apply text-xs font-normal text-red-600;
+  }
+}
