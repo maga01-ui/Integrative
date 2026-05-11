@@ -248,19 +248,14 @@ export default async function FatturePage({
     prisma.fattura.count({ where: whereF }),
   ])
 
-  // Totale importo filtrato
-  const totale = fatture.reduce((acc, f) => acc + Number(f.importo), 0)
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header: titolo a sinistra, bottone "Nuova fattura" sempre in alto a destra */}
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold text-slate-600">Fatture</h1>
         <a href="/fatture/nuovo" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-brand-hover">
           + Nuova fattura
         </a>
-        <span className="text-sm font-medium text-slate-600">
-          Totale: <strong>€ {totale.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</strong>
-        </span>
       </div>
 
       {/* ── Da gestire: da emettere + emesse non pagate ─────────────────────── */}
