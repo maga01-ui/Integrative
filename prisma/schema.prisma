@@ -390,7 +390,8 @@ model Paziente {
   sesso            String?   // M = Maschio, F = Femmina
   stato            String?   @default("Italia") // paese di residenza
   note             String?   // note libere sull'anagrafica paziente
-  operatoreId          String?
+  operatoreId          String?   // operatore di riferimento del paziente (impostato in fase di creazione)
+  teamId               String?   // team di riferimento del paziente (impostato in fase di creazione)
   leadId               String?
   canale               String?   // da dove proviene il paziente (Passaparola, Facebook…)
   campagna             String?   // nome campagna di acquisizione
@@ -414,6 +415,7 @@ model Paziente {
 
   @@index([studioId, attivo])
   @@index([studioId, tipo])
+  @@index([teamId])
 }
 
 model Percorso {

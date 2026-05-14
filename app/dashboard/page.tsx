@@ -1,8 +1,17 @@
 // Dashboard: KPI principali dello studio
 import { redirect } from 'next/navigation'
-import { getTenantContext, primaPaginaAccessibile } from '@/lib/tenant'
+import {
+  getTenantContext,
+  primaPaginaAccessibile,
+  teamScopeAppuntamento,
+  teamScopeFattura,
+  teamScopePaziente,
+  teamScopePrescrizioneFito,
+  isScopeTeamManager,
+} from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
-import { Users, Calendar, FileText, Bell, Clock, Tag, BarChart3 } from 'lucide-react'
+import { valoreFitoterapia } from '@/lib/fitoterapia'
+import { Users, Calendar, FileText, Bell, Clock, Tag, ShieldCheck } from 'lucide-react'
 
 export default async function DashboardPage() {
   let ctx
@@ -20,6 +29,20 @@ export default async function DashboardPage() {
 
   const ws = ctx.studioId ? { studioId: ctx.studioId } : {}
 
+  // ── Scope di visibilità per manager di team ─────────────────────────────────
+  // Se l'utente loggato è un manager di team (e non SUPERADMIN), vede solo i
+  // dati relativi al proprio team. I filtri sotto si auto-disattivano per
+  // SUPERADMIN/utenti normali (restituiscono un oggetto vuoto).
+  // Pre-calcolo in parallelo i 4 filtri di scope-team (oggetti vuoti per chi
+  // non è team manager, altrimenti { pazienteId: { in: [...] } }).
+  const [wsApp, wsFat, wsPaz, wsFito] = await Promise.all([
+    teamScopeAppuntamento(ctx),
+    teamScopeFattura(ctx),
+    teamScopePaziente(ctx),
+    teamScopePrescrizioneFito(ctx),
+  ])
+  const limitatoAlTeam = isScopeTeamManager(ctx)
+
   // ── Date ────────────────────────────────────────────────────────────────────
   const oggi        = new Date()
   const inizioOggi  = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate())
@@ -35,44 +58,68 @@ export default async function DashboardPage() {
   const statiCompletati = { in: ['COMPLETATO'] as never[] }
 
   // ── KPI base ────────────────────────────────────────────────────────────────
+  // Per il manager di team, "lead" non è team-scoped (i lead arrivano allo
+  // studio prima che vengano assegnati ad un team), quindi quel conteggio
+  // resta 0 — verrà comunque mostrato il box, ma indicherà che non si applica.
   const [
     totalePazienti, leadAttivi, appuntamentiOggi, fatturatoMese,
     atteseSett, atteseMese, fattoSett, fattoMese,
   ] = await Promise.all([
-    prisma.paziente.count({ where: { ...ws, attivo: true } }),
-    prisma.lead.count({ where: { ...ws, stato: { notIn: ['CONVERTITO', 'NON_INTERESSATO'] } } }),
-    prisma.appuntamento.count({ where: { ...ws, inizio: { gte: inizioOggi, lt: fineOggi } } }),
+    prisma.paziente.count({ where: { ...ws, ...wsPaz, attivo: true } }),
+    limitatoAlTeam
+      ? Promise.resolve(0)
+      : prisma.lead.count({ where: { ...ws, stato: { notIn: ['CONVERTITO', 'NON_INTERESSATO'] } } }),
+    prisma.appuntamento.count({ where: { ...ws, ...wsApp, inizio: { gte: inizioOggi, lt: fineOggi } } }),
     prisma.fattura.aggregate({
-      where: { ...ws, stato: { not: 'ANNULLATA' }, dataEmissione: { gte: inizioMese, lt: fineMese } },
+      where: { ...ws, ...wsFat, stato: { not: 'ANNULLATA' }, dataEmissione: { gte: inizioMese, lt: fineMese } },
       _sum: { importo: true },
     }),
     prisma.appuntamento.aggregate({
-      where: { ...ws, stato: statiAttivi, inizio: { gte: inizioSett, lt: fineSett } },
+      where: { ...ws, ...wsApp, stato: statiAttivi, inizio: { gte: inizioSett, lt: fineSett } },
       _sum: { prezzoApplicato: true },
     }),
     prisma.appuntamento.aggregate({
-      where: { ...ws, stato: statiAttivi, inizio: { gte: inizioMese, lt: fineMese } },
+      where: { ...ws, ...wsApp, stato: statiAttivi, inizio: { gte: inizioMese, lt: fineMese } },
       _sum: { prezzoApplicato: true },
     }),
     prisma.appuntamento.aggregate({
-      where: { ...ws, stato: statiCompletati, inizio: { gte: inizioSett, lt: fineOggi } },
+      where: { ...ws, ...wsApp, stato: statiCompletati, inizio: { gte: inizioSett, lt: fineOggi } },
       _sum: { prezzoApplicato: true },
     }),
     prisma.appuntamento.aggregate({
-      where: { ...ws, stato: statiCompletati, inizio: { gte: inizioMese, lt: fineOggi } },
+      where: { ...ws, ...wsApp, stato: statiCompletati, inizio: { gte: inizioMese, lt: fineOggi } },
       _sum: { prezzoApplicato: true },
     }),
   ])
 
   const fatturato     = Number(fatturatoMese._sum.importo      ?? 0)
-  const attesaSettNum = Number(atteseSett._sum.prezzoApplicato  ?? 0)
-  const attesaMeseNum = Number(atteseMese._sum.prezzoApplicato  ?? 0)
-  const fattoSettNum  = Number(fattoSett._sum.prezzoApplicato   ?? 0)
-  const fattoMeseNum  = Number(fattoMese._sum.prezzoApplicato   ?? 0)
+  // Importi base "appuntamenti" — la fitoterapia viene sommata dopo.
+  const attesaSettApp = Number(atteseSett._sum.prezzoApplicato  ?? 0)
+  const attesaMeseApp = Number(atteseMese._sum.prezzoApplicato  ?? 0)
+  const fattoSettApp  = Number(fattoSett._sum.prezzoApplicato   ?? 0)
+  const fattoMeseApp  = Number(fattoMese._sum.prezzoApplicato   ?? 0)
+
+  // ── Valore fitoterapia da sommare ad atteso/fatto ──────────────────────────
+  // Per la fitoterapia, "atteso" = tutte le prescrizioni con dataInizio nel
+  // periodo (anche future), "fatto" = solo quelle con dataInizio <= oggi.
+  // Il valore di una prescrizione è la somma (prezzoMese × durataM) per ogni
+  // prodotto prescritto.
+  const [fitoAttesaSett, fitoAttesaMese, fitoFattoSett, fitoFattoMese] = await Promise.all([
+    valoreFitoterapia({ ...ws, ...wsFito, dataInizio: { gte: inizioSett, lt: fineSett } }),
+    valoreFitoterapia({ ...ws, ...wsFito, dataInizio: { gte: inizioMese, lt: fineMese } }),
+    valoreFitoterapia({ ...ws, ...wsFito, dataInizio: { gte: inizioSett, lt: fineOggi } }),
+    valoreFitoterapia({ ...ws, ...wsFito, dataInizio: { gte: inizioMese, lt: fineOggi } }),
+  ])
+
+  // Totali combinati: appuntamenti + fitoterapia
+  const attesaSettNum = attesaSettApp + fitoAttesaSett
+  const attesaMeseNum = attesaMeseApp + fitoAttesaMese
+  const fattoSettNum  = fattoSettApp  + fitoFattoSett
+  const fattoMeseNum  = fattoMeseApp  + fitoFattoMese
 
   // Sconti del mese: somma (prezzoBase - prezzoApplicato) dove prezzoApplicato < prezzoBase
   const appMesePrezzi = await prisma.appuntamento.findMany({
-    where: { ...ws, stato: 'COMPLETATO', inizio: { gte: inizioMese, lt: fineMese } },
+    where: { ...ws, ...wsApp, stato: 'COMPLETATO', inizio: { gte: inizioMese, lt: fineMese } },
     select: { prezzoBase: true, prezzoApplicato: true },
   })
   const totaleSconto = appMesePrezzi.reduce((sum, a) => {
@@ -87,14 +134,14 @@ export default async function DashboardPage() {
 
   // ── Ultimi pazienti ──────────────────────────────────────────────────────────
   const ultimiPazienti = await prisma.paziente.findMany({
-    where: { ...ws, attivo: true },
+    where: { ...ws, ...wsPaz, attivo: true },
     orderBy: { createdAt: 'desc' },
     take: 5,
   })
 
   // ── Agenda di oggi ───────────────────────────────────────────────────────────
   const agendaOggi = await prisma.appuntamento.findMany({
-    where: { ...ws, inizio: { gte: inizioOggi, lt: fineOggi }, stato: { notIn: ['CANCELLATO'] } },
+    where: { ...ws, ...wsApp, inizio: { gte: inizioOggi, lt: fineOggi }, stato: { notIn: ['CANCELLATO'] } },
     select: {
       id: true, tipoPrestazione: true, inizio: true, stato: true,
       paziente: { select: { id: true, nome: true, cognome: true } },
@@ -106,7 +153,7 @@ export default async function DashboardPage() {
   // ── Pazienti da richiamare (scaduti + oggi + prossimi 3 giorni) ──────────────
   const fineRichiamo = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 3)
   const daRichiamare = await prisma.paziente.findMany({
-    where: { ...ws, attivo: true, statoCura: 'DA_RICHIAMARE', dataRichiamo: { lte: fineRichiamo } },
+    where: { ...ws, ...wsPaz, attivo: true, statoCura: 'DA_RICHIAMARE', dataRichiamo: { lte: fineRichiamo } },
     select: { id: true, nome: true, cognome: true, telefono: true, dataRichiamo: true, note: true },
     orderBy: { dataRichiamo: 'asc' },
   })
@@ -114,20 +161,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Intestazione + link rapido alla Dashboard Mktg */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-600">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">Riepilogo del mese corrente.</p>
-        </div>
-        <a
-          href="/dashboard/marketing"
-          className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:shadow"
-        >
-          <BarChart3 size={16} className="text-slate-500" />
-          Dashboard Mktg
-        </a>
+      {/* Intestazione */}
+      <div>
+        <h1 className="text-3xl font-semibold text-slate-600">Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">Riepilogo del mese corrente.</p>
       </div>
+
+      {/* Avviso scope ridotto: visibile solo al manager del team */}
+      {limitatoAlTeam && (
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          <ShieldCheck size={16} />
+          Stai visualizzando i dati del tuo team
+        </div>
+      )}
 
       {/* ── KPI riga 1: contatori ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -145,12 +191,23 @@ export default async function DashboardPage() {
         </a>
       </div>
 
-      {/* ── KPI riga 2: fatturato atteso / fatto ─────────────────────────── */}
+      {/* ── KPI riga 2: fatturato atteso / fatto ───────────────────────────
+          Ogni box è cliccabile: rimanda alla pagina di dettaglio
+          /dashboard/economico/[tipo] dove l'utente può vedere
+          pazienti, prestazioni e operatori con totali e percentuali. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard icon={FileText} label="Atteso settimana"          value={fmt(attesaSettNum)} colore="teal" />
-        <KpiCard icon={FileText} label="Atteso mese"               value={fmt(attesaMeseNum)} colore="teal" />
-        <KpiCard icon={FileText} label="Fatto settimana (ad oggi)" value={fmt(fattoSettNum)}  colore="indigo" />
-        <KpiCard icon={FileText} label="Fatto mese (ad oggi)"      value={fmt(fattoMeseNum)}  colore="indigo" />
+        <a href="/dashboard/economico/atteso-settimana" className="block">
+          <KpiCard icon={FileText} label="Atteso settimana"          value={fmt(attesaSettNum)} colore="teal" />
+        </a>
+        <a href="/dashboard/economico/atteso-mese" className="block">
+          <KpiCard icon={FileText} label="Atteso mese"               value={fmt(attesaMeseNum)} colore="teal" />
+        </a>
+        <a href="/dashboard/economico/fatto-settimana" className="block">
+          <KpiCard icon={FileText} label="Fatto settimana (ad oggi)" value={fmt(fattoSettNum)}  colore="indigo" />
+        </a>
+        <a href="/dashboard/economico/fatto-mese" className="block">
+          <KpiCard icon={FileText} label="Fatto mese (ad oggi)"      value={fmt(fattoMeseNum)}  colore="indigo" />
+        </a>
       </div>
 
       {/* ── Agenda oggi + Da richiamare ───────────────────────────────────── */}

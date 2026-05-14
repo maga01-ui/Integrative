@@ -59,12 +59,19 @@ async function convertiLead(leadId: string, next: string | null, studioIdFallbac
 
   const tipo = formData.get('tipo') as 'PRIVATO' | 'AZIENDA'
 
+  // Operatore e Team di riferimento: obbligatori in creazione
+  const operatoreId = (formData.get('operatoreId') as string) || null
+  const teamId      = (formData.get('teamId') as string) || null
+  if (!operatoreId) throw new Error('Seleziona un operatore di riferimento.')
+  if (!teamId)      throw new Error('Seleziona un team di riferimento.')
+
   // Crea il paziente con tutti i dati del form (anagrafica completa)
   const paziente = await prisma.paziente.create({
     data: {
       studioId,
       tipo,
       leadId,                                              // collega al lead originale
+      operatoreId,                                         // operatore di riferimento
       nome:           capitalizza(formData.get('nome') as string) ?? '',
       cognome:        capitalizza(formData.get('cognome') as string),
       dataNascita:    formData.get('dataNascita')
@@ -89,13 +96,13 @@ async function convertiLead(leadId: string, next: string | null, studioIdFallbac
     },
   })
 
-  // Salva i campi ancora gestiti con raw SQL (stato nazione, note, sesso)
+  // Salva i campi ancora gestiti con raw SQL (stato nazione, note, sesso, teamId)
   const stato = capitalizza(formData.get('stato') as string) ?? 'Italia'
   const note  = (formData.get('note') as string) || null
   const sesso = (formData.get('sesso') as string) || null
   await prisma.$executeRaw`
     UPDATE "Paziente"
-    SET stato = ${stato}, note = ${note}, sesso = ${sesso}
+    SET stato = ${stato}, note = ${note}, sesso = ${sesso}, "teamId" = ${teamId}
     WHERE id = ${paziente.id}`
 
   // Aggiorna il lead: stato → CONVERTITO, collega l'ID del nuovo paziente
@@ -180,6 +187,26 @@ export default async function ConvertiLeadPage({
   // Sono GLOBALI: stessa lista per tutti gli utenti e per tutti gli studi.
   const origini = await getOriginiTutteAttive()
 
+  // Carica operatori e team dello studio per i campi obbligatori del form
+  const [operatori, team] = studioId
+    ? await Promise.all([
+        prisma.utente.findMany({
+          where:   { studioId, attivo: true, ruolo: { not: 'SUPERADMIN' } },
+          select:  { id: true, nome: true, cognome: true },
+          orderBy: [{ cognome: 'asc' }, { nome: 'asc' }],
+        }),
+        prisma.team.findMany({
+          where:   { studioId, attivo: true },
+          select:  { id: true, nome: true },
+          orderBy: { nome: 'asc' },
+        }),
+      ])
+    : [[], []]
+  const operatoriOpts = (operatori as { id: string; nome: string; cognome: string }[])
+    .map(o => ({ id: o.id, label: `${o.cognome} ${o.nome}`.trim() }))
+  const teamOpts = (team as { id: string; nome: string }[])
+    .map(t => ({ id: t.id, label: t.nome }))
+
   // Lega leadId, next e studioId alla server action tramite .bind
   // studioId viene passato come fallback pre-calcolato (sicuro: risolto lato server)
   const azione = convertiLead.bind(null, lead.id, next ?? null, studioId)
@@ -214,6 +241,8 @@ export default async function ConvertiLeadPage({
       <NuovoPazienteForm
         action={azione}
         origini={origini}
+        operatori={operatoriOpts}
+        team={teamOpts}
         defaultValues={{
           nome:      lead.nome      ?? '',
           cognome:   lead.cognome   ?? '',

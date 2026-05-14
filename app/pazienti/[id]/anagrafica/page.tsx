@@ -108,12 +108,18 @@ export default async function AnagraficaPage({ params }: { params: any }) {
         <p className="text-sm text-slate-500">Aggiorna i dati anagrafici, i contatti e l'origine del paziente.</p>
       </div>
 
+      {/* Operatore di riferimento e Team NON sono modificabili da qui:
+          si gestiscono dal box in alto della scheda paziente.
+          Per questo passiamo nascondiOperatoreTeam={true} e liste vuote. */}
       <NuovoPazienteForm
         action={updatePaziente}
         origini={origini}
+        operatori={[]}
+        team={[]}
         defaultValues={defaultValues}
         submitLabel="Aggiorna paziente"
         pazienteId={pazienteId}
+        nascondiOperatoreTeam={true}
       />
     </div>
   )

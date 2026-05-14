@@ -1,16 +1,19 @@
 'use client'
-// Sezione Team + Operatore + Sala + DatePicker.
-// Riceve dati già aggiornati da FormStudioWrapper — non fa fetch autonomi.
-// Se team è vuoto, il campo team non viene mostrato.
+// Sezione Operatore + Sala + DatePicker per il form di creazione appuntamento.
+//
+// NOTA: il team NON è più scelto in questo form. Viene preso automaticamente
+// dal paziente (campo Paziente.teamId, impostato in fase di creazione del
+// paziente e modificabile solo dalla sua scheda). Qui usiamo il defaultTeamId
+// solo come campo nascosto, così la server action lo salva sull'appuntamento.
+// La lista degli operatori viene filtrata in base ai membri di quel team
+// (se presente), in modo che si possa scegliere come operatore della singola
+// prestazione anche un operatore diverso, purché appartenente al team.
 
-import { useState } from 'react'
 import DatePickerCalendario from './DatePickerCalendario'
 
 interface Operatore { id: string; nome: string; cognome: string }
 interface Sala      { id: string; nome: string }
 interface Team      { id: string; nome: string; collaboratori: { utenteId: string }[] }
-
-const cls = 'mt-1.5 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200'
 
 export default function TeamOperatoriSection({
   team,
@@ -25,48 +28,22 @@ export default function TeamOperatoriSection({
   studioId:       string
   defaultTeamId?: string
 }) {
-  // Priorità: defaultTeamId dal paziente → team unico → vuoto
-  const [teamId, setTeamId] = useState(() => {
-    if (defaultTeamId && team.some(t => t.id === defaultTeamId)) return defaultTeamId
-    if (team.length === 1) return team[0].id
-    return ''
-  })
+  // Il team da usare è esclusivamente quello del paziente.
+  const teamId = defaultTeamId
 
+  // Filtra gli operatori in base ai membri del team del paziente.
+  // Se il paziente non ha un team (caso vecchi pazienti), mostriamo tutti
+  // gli operatori dello studio.
   const operatoriFiltrati = teamId
     ? tuttiOperatori.filter(op =>
         team.find(t => t.id === teamId)?.collaboratori.some(c => c.utenteId === op.id)
       )
     : tuttiOperatori
 
-  // Mostra il selettore solo se ci sono 2+ team; con 1 solo team lo si seleziona in automatico
-  const mostraSelectTeam = team.length > 1
-
   return (
     <>
-      {/* Team — visibile solo se lo studio ha 2 o più team attivi.
-          Larghezza ridotta a metà (come Tipologia e Giorno) tramite grid a 2 colonne. */}
-      {mostraSelectTeam ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Team *</label>
-            <select
-              name="teamId"
-              required
-              value={teamId}
-              onChange={e => setTeamId(e.target.value)}
-              className={cls}
-            >
-              <option value="">Seleziona team…</option>
-              {team.map(t => (
-                <option key={t.id} value={t.id}>{t.nome}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      ) : (
-        /* 0 team → stringa vuota; 1 team → id automatico */
-        <input type="hidden" name="teamId" value={team[0]?.id ?? ''} />
-      )}
+      {/* Team: hidden input — valore preso dal paziente. */}
+      <input type="hidden" name="teamId" value={teamId} />
 
       {/* Data e ora */}
       <div>
@@ -77,7 +54,6 @@ export default function TeamOperatoriSection({
           studioId={studioId}
         />
       </div>
-
     </>
   )
 }

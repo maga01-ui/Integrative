@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import BackButton from '@/components/ui/BackButton'
 import PazienteNav from './PazienteNav'
 import PersoButton from './PersoButton'
+import OperatoreTeamBox from './OperatoreTeamBox'
 
 export default async function PazienteLayout({
   children,
@@ -25,6 +26,40 @@ export default async function PazienteLayout({
         select: { nome: true, cognome: true },
       })
     : null
+
+  // Carica teamId via raw SQL (campo nuovo, potrebbe non essere nel client
+  // Prisma rigenerato fino al prossimo restart del server)
+  const [teamRow] = await prisma.$queryRaw<{ teamId: string | null }[]>`
+    SELECT "teamId" FROM "Paziente" WHERE id = ${(paziente as any).id} LIMIT 1`
+  const teamIdPaziente = teamRow?.teamId ?? null
+
+  // Carica il nome del team assegnato (se presente)
+  const team = teamIdPaziente
+    ? await prisma.team.findUnique({
+        where: { id: teamIdPaziente },
+        select: { nome: true },
+      })
+    : null
+
+  // Carica liste operatori e team dello studio per i menu di modifica.
+  // Servono al componente client "OperatoreTeamBox".
+  const [operatoriStudio, teamStudio] = await Promise.all([
+    prisma.utente.findMany({
+      where:   { studioId: paziente.studioId, attivo: true, ruolo: { not: 'SUPERADMIN' } },
+      select:  { id: true, nome: true, cognome: true },
+      orderBy: [{ cognome: 'asc' }, { nome: 'asc' }],
+    }),
+    prisma.team.findMany({
+      where:   { studioId: paziente.studioId, attivo: true },
+      select:  { id: true, nome: true },
+      orderBy: { nome: 'asc' },
+    }),
+  ])
+  const operatoriOpts = operatoriStudio.map(u => ({
+    id: u.id, label: `${u.cognome} ${u.nome}`.trim(),
+  }))
+  const teamOpts = teamStudio.map(t => ({ id: t.id, label: t.nome }))
+
   const telefonoUrl = createPhoneUrl(paziente.telefono)
   const whatsappUrl = createWhatsAppUrl(paziente.telefonoWa ?? paziente.telefono)
   const emailUrl = paziente.email ? `mailto:${paziente.email}` : null
@@ -173,21 +208,28 @@ export default async function PazienteLayout({
               </div>
             </div>
           )}
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <p className="text-sm text-slate-500">Studio</p>
               <p className="mt-0.5 font-semibold text-slate-900">{(paziente as any).studio?.nome ?? '—'}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Operatore</p>
-              <p className="mt-0.5 text-slate-900">
-                {operatore ? `${operatore.cognome} ${operatore.nome}` : '—'}
-              </p>
-            </div>
-            <div>
               <p className="text-sm text-slate-500">Età</p>
               <p className="mt-0.5 text-slate-900">{eta !== null ? `${eta} anni` : '—'}</p>
             </div>
+          </div>
+
+          {/* Operatore di riferimento + Team: visibili e modificabili solo da qui */}
+          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <OperatoreTeamBox
+              pazienteId={id}
+              operatoreIdIniziale={(paziente as any).operatoreId ?? null}
+              teamIdIniziale={teamIdPaziente}
+              operatoreNome={operatore ? `${operatore.cognome} ${operatore.nome}`.trim() : null}
+              teamNome={team?.nome ?? null}
+              operatori={operatoriOpts}
+              team={teamOpts}
+            />
           </div>
           {/* Pulsanti contatto */}
           <div className="mt-4 flex flex-wrap gap-2">

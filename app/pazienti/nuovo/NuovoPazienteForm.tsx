@@ -39,8 +39,13 @@ interface DefaultValues {
   telefono?: string; telefonoWa?: string; email?: string
   indirizzo?: string; cap?: string; citta?: string; provincia?: string
   stato?: string; origine?: string; note?: string
-  sesso?: string   // M = Maschio, F = Femmina
+  sesso?: string         // M = Maschio, F = Femmina
+  operatoreId?: string   // operatore di riferimento
+  teamId?: string        // team di riferimento
 }
+
+// Opzione di selezione per Operatore o Team
+interface Opzione { id: string; label: string }
 
 // ── Props del form ────────────────────────────────────────────────────────────
 interface Props {
@@ -48,6 +53,10 @@ interface Props {
   action:       (formData: FormData) => Promise<void>
   // Lista origini acquisizione configurate in impostazioni
   origini:      { id: string; nome: string }[]
+  // Operatori dello studio (per il campo "Operatore di riferimento")
+  operatori:    Opzione[]
+  // Team dello studio (per il campo "Team di riferimento")
+  team:         Opzione[]
   // Valori precompilati (solo nella pagina modifica)
   defaultValues?: DefaultValues
   // Testo del pulsante di invio (es. "Aggiorna paziente")
@@ -56,10 +65,23 @@ interface Props {
   pazienteId?:  string
   // URL del pulsante Annulla (default: /pazienti)
   cancelHref?:  string
+  // Se true, NON mostriamo i campi operatore/team nel form (sono già nel
+  // box in alto della scheda paziente e si modificano da lì)
+  nascondiOperatoreTeam?: boolean
 }
 
 // ── Componente principale ─────────────────────────────────────────────────────
-export default function NuovoPazienteForm({ action, origini, defaultValues, submitLabel, pazienteId, cancelHref }: Props) {
+export default function NuovoPazienteForm({
+  action,
+  origini,
+  operatori,
+  team,
+  defaultValues,
+  submitLabel,
+  pazienteId,
+  cancelHref,
+  nascondiOperatoreTeam,
+}: Props) {
   // Traccia il tipo selezionato per mostrare/nascondere i campi e gestire i required
   const [tipo, setTipo] = useState<'PRIVATO' | 'AZIENDA'>(
     (defaultValues?.tipo as 'PRIVATO' | 'AZIENDA') ?? 'PRIVATO'
@@ -173,6 +195,49 @@ export default function NuovoPazienteForm({ action, origini, defaultValues, subm
         </div>
         <SelectNazione required defaultValue={defaultValues?.stato ?? 'Italia'} />
       </fieldset>
+
+      {/* ── Operatore di riferimento e Team ──────────────────────────────
+          Questi due valori vengono impostati alla creazione del paziente e
+          poi restano stabili. Possono essere modificati solo dal box in
+          alto nella scheda paziente. Nelle singole prestazioni si può
+          comunque scegliere un operatore diverso per quel singolo evento. */}
+      {!nascondiOperatoreTeam && (
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            Operatore e team di riferimento
+          </legend>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Team di riferimento *</label>
+              <select
+                name="teamId"
+                defaultValue={defaultValues?.teamId ?? ''}
+                required
+                className={cls}
+              >
+                <option value="">— Seleziona team —</option>
+                {team.map(t => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Operatore di riferimento *</label>
+              <select
+                name="operatoreId"
+                defaultValue={defaultValues?.operatoreId ?? ''}
+                required
+                className={cls}
+              >
+                <option value="">— Seleziona operatore —</option>
+                {operatori.map(o => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </fieldset>
+      )}
 
       {/* ── Origine acquisizione ─────────────────────────────────────── */}
       <fieldset className="space-y-4">

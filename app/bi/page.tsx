@@ -1,8 +1,14 @@
 // Pagina Business Intelligence: statistiche aggregate dello studio
 import { redirect } from 'next/navigation'
-import { getTenantContext } from '@/lib/tenant'
+import {
+  getTenantContext,
+  teamScopeAppuntamento,
+  teamScopeFattura,
+  teamScopePaziente,
+  isScopeTeamManager,
+} from '@/lib/tenant'
 import { prisma } from '@/lib/prisma'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, ShieldCheck } from 'lucide-react'
 
 export default async function BiPage({
   searchParams
@@ -17,6 +23,17 @@ export default async function BiPage({
   const anno = annoS ? Number(annoS) : new Date().getFullYear()
   const ws = ctx.studioId ? { studioId: ctx.studioId } : {}
 
+  // ── Scope di visibilità per manager di team ───────────────────────────────
+  // Se l'utente è un manager di team (e non SUPERADMIN), vede solo i dati
+  // dei pazienti del proprio team. Per gli altri utenti i filtri qui sotto
+  // sono oggetti vuoti e non hanno effetto sulle query.
+  const [wsApp, wsFat, wsPaz] = await Promise.all([
+    teamScopeAppuntamento(ctx),
+    teamScopeFattura(ctx),
+    teamScopePaziente(ctx),
+  ])
+  const limitatoAlTeam = isScopeTeamManager(ctx)
+
   const inizioAnno = new Date(anno, 0, 1)
   const fineAnno   = new Date(anno + 1, 0, 1)
 
@@ -28,25 +45,28 @@ export default async function BiPage({
 
     // Fatturato dell'anno: somma importo delle fatture/ricevute emesse (non annullate)
     prisma.fattura.aggregate({
-      where: { ...ws, stato: { not: 'ANNULLATA' }, dataEmissione: { gte: inizioAnno, lt: fineAnno } },
+      where: { ...ws, ...wsFat, stato: { not: 'ANNULLATA' }, dataEmissione: { gte: inizioAnno, lt: fineAnno } },
       _sum: { importo: true }
     }),
 
     // Appuntamenti completati
     prisma.appuntamento.count({
-      where: { ...ws, stato: statiCompletati, inizio: { gte: inizioAnno, lt: fineAnno } }
+      where: { ...ws, ...wsApp, stato: statiCompletati, inizio: { gte: inizioAnno, lt: fineAnno } }
     }),
 
     // Nuovi pazienti
-    prisma.paziente.count({ where: { ...ws, createdAt: { gte: inizioAnno, lt: fineAnno } } }),
+    prisma.paziente.count({ where: { ...ws, ...wsPaz, createdAt: { gte: inizioAnno, lt: fineAnno } } }),
 
-    // Nuovi lead
-    prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno } } }),
+    // Nuovi lead: i lead non hanno team, quindi per i manager di team il
+    // conteggio è 0 (mostriamo "—" lato UI).
+    limitatoAlTeam
+      ? Promise.resolve(0)
+      : prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno } } }),
 
     // Appuntamenti per tipo prestazione
     prisma.appuntamento.groupBy({
       by: ['tipoPrestazione'],
-      where: { ...ws, stato: statiCompletati, inizio: { gte: inizioAnno, lt: fineAnno } },
+      where: { ...ws, ...wsApp, stato: statiCompletati, inizio: { gte: inizioAnno, lt: fineAnno } },
       _count: true,
       orderBy: { _count: { tipoPrestazione: 'desc' } }
     })
@@ -59,6 +79,7 @@ export default async function BiPage({
       prisma.fattura.aggregate({
         where: {
           ...ws,
+          ...wsFat,
           stato: { not: 'ANNULLATA' },
           dataEmissione: { gte: new Date(anno, i, 1), lt: new Date(anno, i + 1, 1) }
         },
@@ -74,16 +95,21 @@ export default async function BiPage({
 
   // ── Conversioni annuali ──────────────────────────────────────────────────────
 
-  // Lead arrivati nell'anno e quanti sono diventati bioscan (stato CONVERTITO)
-  const [leadsDelAnno, leadsDiventaiBioscan] = await Promise.all([
-    prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno } } }),
-    prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno }, stato: 'CONVERTITO' } }),
-  ])
+  // Lead arrivati nell'anno e quanti sono diventati bioscan (stato CONVERTITO).
+  // I lead non hanno team: per il manager di team mettiamo 0 in entrambi e
+  // più sotto nascondiamo la card "Leads dell'anno".
+  const [leadsDelAnno, leadsDiventaiBioscan] = limitatoAlTeam
+    ? [0, 0]
+    : await Promise.all([
+        prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno } } }),
+        prisma.lead.count({ where: { ...ws, dataLead: { gte: inizioAnno, lt: fineAnno }, stato: 'CONVERTITO' } }),
+      ])
 
   // Pazienti che hanno fatto un bioscan nell'anno
   const bioscanRaw = await prisma.appuntamento.findMany({
     where: {
       ...ws,
+      ...wsApp,
       tipoPrestazione: { contains: 'bioscan', mode: 'insensitive' },
       stato: 'COMPLETATO',
       inizio: { gte: inizioAnno, lt: fineAnno },
@@ -104,6 +130,7 @@ export default async function BiPage({
   const lettureRaw = await prisma.appuntamento.findMany({
     where: {
       ...ws,
+      ...wsApp,
       tipoPrestazione: { contains: 'lettura', mode: 'insensitive' },
       stato: 'COMPLETATO',
       inizio: { gte: inizioAnno, lt: fineAnno },
@@ -161,13 +188,23 @@ export default async function BiPage({
         </form>
       </div>
 
-      {/* KPI annuali */}
+      {/* Avviso scope ridotto: visibile solo al manager del team */}
+      {limitatoAlTeam && (
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          <ShieldCheck size={16} />
+          Stai visualizzando i dati del tuo team
+        </div>
+      )}
+
+      {/* KPI annuali.
+          Per il manager di team, la voce "Nuovi lead" mostra "—" perché
+          i lead non sono associati ad un team. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: 'Fatturato emesso',  value: `€ ${Number(fatturatoAnno._sum.importo ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 0 })}` },
           { label: 'Sedute completate',      value: appuntamentiEseguiti },
           { label: 'Nuovi pazienti',         value: nuoviPazienti },
-          { label: 'Nuovi lead',             value: nuoviLead },
+          { label: 'Nuovi lead',             value: limitatoAlTeam ? '—' : nuoviLead },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-slate-500">{label}</p>
@@ -238,17 +275,20 @@ export default async function BiPage({
 
         <div className="grid gap-4 lg:grid-cols-3">
 
-          {/* 1. Leads → Bioscan */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Leads dell&apos;anno</p>
-              <span className="text-sm font-bold text-slate-700">{pct(leadsDiventaiBioscan, leadsDelAnno)}</span>
+          {/* 1. Leads → Bioscan — nascosta per il manager di team
+                (i lead non hanno team associato) */}
+          {!limitatoAlTeam && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Leads dell&apos;anno</p>
+                <span className="text-sm font-bold text-slate-700">{pct(leadsDiventaiBioscan, leadsDelAnno)}</span>
+              </div>
+              <div className="space-y-3">
+                <RigaConversione label="Leads arrivati"     valore={leadsDelAnno}        su={null} />
+                <RigaConversione label="Diventati Bioscan"  valore={leadsDiventaiBioscan} su={null} />
+              </div>
             </div>
-            <div className="space-y-3">
-              <RigaConversione label="Leads arrivati"     valore={leadsDelAnno}        su={null} />
-              <RigaConversione label="Diventati Bioscan"  valore={leadsDiventaiBioscan} su={null} />
-            </div>
-          </div>
+          )}
 
           {/* 2. Bioscan → Programmi */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

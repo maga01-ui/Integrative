@@ -81,3 +81,104 @@ export function primaPaginaAccessibile(permessi: Record<string, string>): string
   }
   return null
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCOPE DI VISIBILITÀ PER MANAGER DEL TEAM
+//
+// Regole applicate nelle pagine "economiche" (dashboard di dettaglio e BI):
+//   • SUPERADMIN      → vede tutti i dati (nessun filtro di team)
+//   • Manager di team → vede SOLO i dati dei team in cui è marcato come
+//                       isManager=true (sui campi/relazioni teamId)
+//   • Altri utenti    → nessun filtro extra (il filtro per studioId resta
+//                       comunque attivo: ognuno vede solo il proprio studio)
+//
+// Gli helper qui sotto restituiscono direttamente i frammenti di "where"
+// Prisma da fondere (...spread) nelle query.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Tipo "leggero" del contesto: prendo solo i campi che servono allo scope,
+// così questi helper non dipendono dall'intera struttura di getTenantContext.
+type ScopeCtx = {
+  ruolo: string
+  teams: Array<{ teamId: string; isManager: boolean }>
+}
+
+// True quando l'utente deve essere limitato ai soli team che gestisce.
+// In pratica: non è SUPERADMIN ed è isManager di almeno un team.
+export function isScopeTeamManager(ctx: ScopeCtx): boolean {
+  if (ctx.ruolo === 'SUPERADMIN') return false
+  return ctx.teams.some(t => t.isManager)
+}
+
+// Lista degli ID dei team gestiti dall'utente come manager.
+export function managedTeamIds(ctx: ScopeCtx): string[] {
+  return ctx.teams.filter(t => t.isManager).map(t => t.teamId)
+}
+
+// ── Implementazione interna ────────────────────────────────────────────────
+//
+// Paziente.teamId è un campo nuovo. Per evitare di dipendere dalla
+// rigenerazione del client Prisma (che richiede stop del dev server),
+// recuperiamo gli ID dei pazienti del team via SQL raw. Le where clause
+// poi filtrano sulla foreign key `pazienteId` che è già nel client.
+//
+// Pre-calcoliamo la lista una sola volta per ctx, in una mappa weak —
+// così pagine che chiamano più helper non ripetono la query.
+const cachePazienteIds = new WeakMap<ScopeCtx, Promise<string[]>>()
+
+async function pazienteIdsDelManager(ctx: ScopeCtx): Promise<string[]> {
+  // Cache per-ctx: la stessa istanza di ctx riusa la promise
+  const giaPresente = cachePazienteIds.get(ctx)
+  if (giaPresente) return giaPresente
+
+  const p = (async () => {
+    const teamIds = managedTeamIds(ctx)
+    if (teamIds.length === 0) return [] as string[]
+    // Costruisco un placeholder $1,$2,… per ogni id e li passo come parametri
+    // Uso il modulo Prisma per costruire una query parametrizzata sicura
+    const placeholders = teamIds.map((_, i) => `$${i + 1}`).join(',')
+    const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT id FROM "Paziente" WHERE "teamId" IN (${placeholders})`,
+      ...teamIds,
+    )
+    return rows.map(r => r.id)
+  })()
+
+  cachePazienteIds.set(ctx, p)
+  return p
+}
+
+// Where clause Prisma per filtrare Appuntamento per il manager di team.
+// Filtra per pazienteId nei pazienti dei team gestiti.
+//
+// Esempio d'uso:
+//   const wsApp = await teamScopeAppuntamento(ctx)
+//   prisma.appuntamento.findMany({ where: { ...ws, ...wsApp } })
+export async function teamScopeAppuntamento(ctx: ScopeCtx) {
+  if (!isScopeTeamManager(ctx)) return {}
+  const ids = await pazienteIdsDelManager(ctx)
+  return { pazienteId: { in: ids } }
+}
+
+// Where clause Prisma per filtrare Fattura: solo fatture di pazienti del team.
+export async function teamScopeFattura(ctx: ScopeCtx) {
+  if (!isScopeTeamManager(ctx)) return {}
+  const ids = await pazienteIdsDelManager(ctx)
+  return { pazienteId: { in: ids } }
+}
+
+// Where clause Prisma per filtrare Paziente: solo pazienti del team.
+// (Filtra per ID diretto del paziente.)
+export async function teamScopePaziente(ctx: ScopeCtx) {
+  if (!isScopeTeamManager(ctx)) return {}
+  const ids = await pazienteIdsDelManager(ctx)
+  return { id: { in: ids } }
+}
+
+// Where clause Prisma per filtrare PrescrizioneFito: prescrizioni di
+// pazienti del team del manager.
+export async function teamScopePrescrizioneFito(ctx: ScopeCtx) {
+  if (!isScopeTeamManager(ctx)) return {}
+  const ids = await pazienteIdsDelManager(ctx)
+  return { pazienteId: { in: ids } }
+}
