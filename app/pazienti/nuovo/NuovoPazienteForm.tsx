@@ -44,8 +44,11 @@ interface DefaultValues {
   teamId?: string        // team di riferimento
 }
 
-// Opzione di selezione per Operatore o Team
-interface Opzione { id: string; label: string }
+// Opzione di selezione per Operatore o Team.
+// "studioId" è il riferimento allo Studio a cui appartiene questa opzione:
+// serve quando l'utente loggato è cross-studio (SUPERADMIN/MARKETING) e
+// stiamo filtrando operatori/team in base allo studio scelto nella tendina.
+interface Opzione { id: string; label: string; studioId?: string }
 
 // ── Props del form ────────────────────────────────────────────────────────────
 interface Props {
@@ -53,10 +56,17 @@ interface Props {
   action:       (formData: FormData) => Promise<void>
   // Lista origini acquisizione configurate in impostazioni
   origini:      { id: string; nome: string }[]
-  // Operatori dello studio (per il campo "Operatore di riferimento")
+  // Operatori (per il campo "Operatore di riferimento").
+  // Se è presente "studi" (sotto), questa lista contiene gli operatori di
+  // TUTTI gli studi e viene filtrata client-side; altrimenti contiene solo
+  // quelli dello studio dell'utente loggato.
   operatori:    Opzione[]
-  // Team dello studio (per il campo "Team di riferimento")
+  // Team — stessa logica di operatori (vedi sopra).
   team:         Opzione[]
+  // Studi disponibili. Passato SOLO quando l'utente loggato è cross-studio
+  // (SUPERADMIN/MARKETING) e quindi deve scegliere a quale studio assegnare
+  // il nuovo paziente. Per gli utenti normali è undefined → niente tendina.
+  studi?:       { id: string; nome: string }[]
   // Valori precompilati (solo nella pagina modifica)
   defaultValues?: DefaultValues
   // Testo del pulsante di invio (es. "Aggiorna paziente")
@@ -76,6 +86,7 @@ export default function NuovoPazienteForm({
   origini,
   operatori,
   team,
+  studi,
   defaultValues,
   submitLabel,
   pazienteId,
@@ -89,6 +100,23 @@ export default function NuovoPazienteForm({
   // Sesso del paziente (solo PRIVATO)
   const [sesso, setSesso] = useState<string>(defaultValues?.sesso ?? '')
 
+  // Modalità "cross-studio": il form mostra la tendina Studio e filtra
+  // operatori/team in base alla scelta. È attiva quando la pagina ci ha
+  // passato l'array "studi" (cioè per SUPERADMIN/MARKETING).
+  const modalitaCrossStudio = Array.isArray(studi)
+  const [studioId, setStudioId] = useState<string>('')
+
+  // Liste effettive di operatori/team da mostrare nella tendina.
+  // In modalità normale = liste piene; in cross-studio = filtrate per studio.
+  // Se l'utente non ha ancora scelto lo studio, le mostriamo vuote (così
+  // capisce subito che deve prima scegliere lo studio).
+  const operatoriVisibili = modalitaCrossStudio
+    ? (studioId ? operatori.filter(o => o.studioId === studioId) : [])
+    : operatori
+  const teamVisibili = modalitaCrossStudio
+    ? (studioId ? team.filter(t => t.studioId === studioId) : [])
+    : team
+
   const isPrivato = tipo === 'PRIVATO'
   const isAzienda = tipo === 'AZIENDA'
 
@@ -97,6 +125,32 @@ export default function NuovoPazienteForm({
 
       {/* Campo nascosto con l'ID paziente — usato solo in modalità modifica */}
       {pazienteId && <input type="hidden" name="_pazienteId" value={pazienteId} />}
+
+      {/* ── Studio (solo per utenti cross-studio: SUPERADMIN/MARKETING) ──
+          Per gli utenti normali questo blocco non viene mostrato perché lo
+          studioId viene preso direttamente dal profilo dell'utente loggato. */}
+      {modalitaCrossStudio && (
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Studio di riferimento *</label>
+          <select
+            name="studioId"
+            value={studioId}
+            onChange={e => setStudioId(e.target.value)}
+            required
+            className={cls}
+          >
+            <option value="">— Seleziona studio —</option>
+            {studi!.map(s => (
+              <option key={s.id} value={s.id}>{s.nome}</option>
+            ))}
+          </select>
+          {!studioId && (
+            <p className="mt-1 text-xs text-slate-500">
+              Scegli prima lo studio: operatori e team verranno filtrati di conseguenza.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Tipo paziente ────────────────────────────────────────────── */}
       <div>
@@ -216,7 +270,7 @@ export default function NuovoPazienteForm({
                 className={cls}
               >
                 <option value="">— Seleziona team —</option>
-                {team.map(t => (
+                {teamVisibili.map(t => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
               </select>
@@ -230,7 +284,7 @@ export default function NuovoPazienteForm({
                 className={cls}
               >
                 <option value="">— Seleziona operatore —</option>
-                {operatori.map(o => (
+                {operatoriVisibili.map(o => (
                   <option key={o.id} value={o.id}>{o.label}</option>
                 ))}
               </select>
