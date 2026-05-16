@@ -79,26 +79,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Il client Prisma generato (binari nativi inclusi). standalone a volte non
 # li include automaticamente, quindi li copiamo esplicitamente per sicurezza.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-# Copio tutto @prisma (include sia "client" usato a runtime, sia "engines"
-# che serve alla CLI per applicare le migration allo startup).
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-# La CLI di Prisma (serve per eseguire "prisma migrate deploy" all'avvio).
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-# Schema + cartella migrations: "migrate deploy" li legge da ./prisma.
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 USER nextjs
 
 EXPOSE 8080
 
-# Avvio in due passi:
-#  1) "prisma migrate deploy" applica TUTTE le migration non ancora presenti
-#     sul database di produzione. Se non ce ne sono, non fa nulla (idempotente).
-#  2) "node server.js" avvia l'app Next.js (server generato da output: standalone).
-#
-# Stampo dei marker (>>> ...) prima e dopo ogni passo: così nei log di Cloud
-# Run è facile capire a quale punto si è arrivati. "set -e" fa uscire lo
-# script al primo errore (con codice di uscita ≠ 0). "exec" sostituisce il
-# processo della shell con node, così Node riceve direttamente i segnali di
-# stop di Cloud Run (graceful shutdown).
-CMD ["sh", "-c", "set -e; echo '>>> [boot] node version:' $(node -v); echo '>>> [boot] running prisma migrate deploy'; node node_modules/prisma/build/index.js migrate deploy; echo '>>> [boot] migrations OK, starting next server'; exec node server.js"]
+# server.js è il file generato da Next con output: 'standalone'.
+# NOTA: le migration del DB NON vengono applicate qui automaticamente.
+# Quando crei una nuova migration in locale, prima di rideployare ricordati
+# di eseguire dal tuo PC, con la DATABASE_URL di produzione (URL diretta
+# Supabase, porta 5432, NON la pooler 6543):
+#   $env:DATABASE_URL = "postgresql://...:5432/..."
+#   npx prisma migrate deploy
+CMD ["node", "server.js"]
