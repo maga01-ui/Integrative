@@ -79,11 +79,23 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Il client Prisma generato (binari nativi inclusi). standalone a volte non
 # li include automaticamente, quindi li copiamo esplicitamente per sicurezza.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Copio tutto @prisma (include sia "client" usato a runtime, sia "engines"
+# che serve alla CLI per applicare le migration allo startup).
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# La CLI di Prisma (serve per eseguire "prisma migrate deploy" all'avvio).
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# Schema + cartella migrations: "migrate deploy" li legge da ./prisma.
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 USER nextjs
 
 EXPOSE 8080
 
-# server.js è il file generato da Next con output: 'standalone'.
-CMD ["node", "server.js"]
+# Avvio in due passi:
+#  1) "prisma migrate deploy" applica TUTTE le migration non ancora presenti
+#     sul database di produzione. Se non ce ne sono, non fa nulla (idempotente).
+#  2) "node server.js" avvia l'app Next.js (server generato da output: standalone).
+# Uso la forma shell del CMD per concatenare i due comandi con "&&":
+# se le migration falliscono, il container NON si avvia (meglio fallire subito
+# che servire una versione dell'app incompatibile con lo schema del DB).
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
