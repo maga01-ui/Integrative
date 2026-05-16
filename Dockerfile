@@ -95,7 +95,10 @@ EXPOSE 8080
 #  1) "prisma migrate deploy" applica TUTTE le migration non ancora presenti
 #     sul database di produzione. Se non ce ne sono, non fa nulla (idempotente).
 #  2) "node server.js" avvia l'app Next.js (server generato da output: standalone).
-# Uso la forma shell del CMD per concatenare i due comandi con "&&":
-# se le migration falliscono, il container NON si avvia (meglio fallire subito
-# che servire una versione dell'app incompatibile con lo schema del DB).
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
+#
+# Stampo dei marker (>>> ...) prima e dopo ogni passo: così nei log di Cloud
+# Run è facile capire a quale punto si è arrivati. "set -e" fa uscire lo
+# script al primo errore (con codice di uscita ≠ 0). "exec" sostituisce il
+# processo della shell con node, così Node riceve direttamente i segnali di
+# stop di Cloud Run (graceful shutdown).
+CMD ["sh", "-c", "set -e; echo '>>> [boot] node version:' $(node -v); echo '>>> [boot] running prisma migrate deploy'; node node_modules/prisma/build/index.js migrate deploy; echo '>>> [boot] migrations OK, starting next server'; exec node server.js"]
