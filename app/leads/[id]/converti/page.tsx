@@ -216,7 +216,7 @@ export default async function ConvertiLeadPage({
   const sottotit = next === 'calendario'
     ? 'Compila i dati richiesti, poi potrai fissare l\'appuntamento.'
     : 'Compila i dati obbligatori per completare la conversione del lead.'
-  const btnLabel = next === 'calendario' ? 'Salva e vai al calendario' : 'Converti in paziente'
+  const btnLabel = next === 'calendario' ? 'Salva' : 'Converti in paziente'
 
   return (
     <div className="space-y-6">

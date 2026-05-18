@@ -358,13 +358,15 @@ export default async function PazientiPage({
   // Set di ID per lookup O(1) nelle righe della tabella
   const idsBioscanSenzaControllo = new Set(alertBioscanSenzaControllo.map(p => p.id))
 
-  // Alert: pazienti che hanno ricevuto entrambi i referti (bioscan iniziale + controllo)
-  // ma non hanno ancora preso nessuna decisione clinica (nessun programma, nessuna fito,
-  // non segnati come "da richiamare" o "perso") → pronti per la conversione
+  // Alert: pazienti pronti per una decisione clinica dopo la lettura del referto.
+  // Copre DUE momenti diversi del percorso:
+  //   1) Subito dopo il referto del bioscan INIZIALE  → decisione: programma / prestazione / fito / da richiamare / non interessato
+  //   2) Subito dopo il referto del bioscan CONTROLLO → decisione: aggiungi sessione / mantenimento / fito / terminato / da richiamare
+  // Vengono esclusi i pazienti che hanno già preso una decisione (programma o fito attivi, da richiamare, perso).
   const alertAttesaConversione = tuttiPazienti.filter(p => {
-    const haRefertoIniziale  = p.bioscan.some((b: any) => b.tipo === 'INIZIALE'  && b.refertoConsegnato)
-    const haRefertoControllo = p.bioscan.some((b: any) => b.tipo === 'CONTROLLO' && b.refertoConsegnato)
-    if (!haRefertoIniziale || !haRefertoControllo) return false
+    // Il referto iniziale consegnato è sempre il prerequisito minimo
+    const haRefertoIniziale = p.bioscan.some((b: any) => b.tipo === 'INIZIALE' && b.refertoConsegnato)
+    if (!haRefertoIniziale) return false
     // Ha ancora sessioni di programma da fare? (stesso criterio di pazienteIsAttivo)
     const haSessioniAttive = p.assegnamenti.some((a: any) => {
       if (a.stato === 'SOSPESO') return true
@@ -378,6 +380,17 @@ export default async function PazientiPage({
     // È segnato come "da richiamare" (vuole pensarci) o è perso?
     if ((p as any).statoCura === 'DA_RICHIAMARE') return false
     if (p.perso) return false
+    // Se ha un programma già concluso, il prossimo passo è il bioscan di CONTROLLO:
+    // appare in attesa conversione solo dopo che anche quel referto è stato consegnato.
+    // Altrimenti il paziente è coperto dall'alert "Senza bioscan controllo" o sta ancora aspettando la lettura.
+    const haProgrammaConcluso = p.assegnamenti.some((a: any) =>
+      a.stato === 'COMPLETATO' ||
+      (a.sessioniCompletate > 0 && a.sessioniCompletate >= a.sessioniTotali)
+    )
+    if (haProgrammaConcluso) {
+      const haRefertoControllo = p.bioscan.some((b: any) => b.tipo === 'CONTROLLO' && b.refertoConsegnato)
+      if (!haRefertoControllo) return false
+    }
     return true
   })
   const idsAttesaConversione = new Set(alertAttesaConversione.map(p => p.id))
