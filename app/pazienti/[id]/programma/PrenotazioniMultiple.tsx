@@ -192,10 +192,9 @@ export default function PrenotazioniMultiple({
     <div className="space-y-3">
 
       {/* Intestazione colonne */}
-      <div className="hidden md:grid md:grid-cols-[2rem_auto_auto_1fr_auto_2rem] gap-3 px-1">
+      <div className="hidden md:grid md:grid-cols-[2rem_auto_1fr_auto_2rem] gap-3 px-1">
         <span />
         <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Data</span>
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Ora</span>
         <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Sala e operatore</span>
         <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Prezzo €</span>
         <span />
@@ -204,7 +203,7 @@ export default function PrenotazioniMultiple({
       {/* Lista sessioni */}
       {righe.map((r, idx) => (
         <div key={idx}
-          className="grid grid-cols-[2rem_auto_auto_1fr_auto_2rem] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+          className="grid grid-cols-[2rem_auto_1fr_auto_2rem] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
 
           {/* Numero sessione */}
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500 flex-shrink-0">
@@ -219,15 +218,6 @@ export default function PrenotazioniMultiple({
             onClick={() => { if (r.data) apriModal(idx) }}
             className={cls}
           />
-
-          {/* Ora */}
-          <select
-            value={r.ora}
-            onChange={e => aggiornaRiga(idx, { ora: e.target.value })}
-            className={`${cls} w-[90px]`}
-          >
-            {ORARI.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
 
           {/* Badge sala+operatore + bottone per aprire il modal */}
           <div className="flex flex-wrap items-center gap-2">
