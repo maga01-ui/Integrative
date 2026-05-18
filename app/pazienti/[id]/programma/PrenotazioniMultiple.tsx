@@ -219,8 +219,14 @@ export default function PrenotazioniMultiple({
             className={cls}
           />
 
-          {/* Badge sala+operatore + bottone per aprire il modal */}
+          {/* Badge ora+sala+operatore + bottone per aprire il modal */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Badge ora — visibile solo dopo aver scelto una sala/operatore dal popup */}
+            {(r.salaId || r.medicoId) && (
+              <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-medium text-indigo-700">
+                {r.ora}
+              </span>
+            )}
             {r.salaId && (
               <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-medium text-indigo-700">
                 {sale.find(s => s.id === r.salaId)?.nome ?? ''}

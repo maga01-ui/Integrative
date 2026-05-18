@@ -239,10 +239,14 @@ export default function TabellaAppuntamenti({
                             />
                           </div>
 
-                          {/* Sala + operatore: badge + bottone modal */}
+                          {/* Ora + sala + operatore: badge + bottone modal */}
                           <div className="flex flex-col gap-1 flex-1">
-                            <span className="text-xs text-slate-500">Sala e operatore</span>
+                            <span className="text-xs text-slate-500">Ora, sala e operatore</span>
                             <div className="flex flex-wrap items-center gap-2">
+                              {/* Badge ora — sempre visibile (è già impostata al valore corrente dell'appuntamento) */}
+                              <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-medium text-indigo-700">
+                                {editState.ora}
+                              </span>
                               {editState.salaId && (
                                 <span className="rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-medium text-indigo-700">
                                   {sale.find(s => s.id === editState.salaId)?.nome ?? ''}
