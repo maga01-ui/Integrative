@@ -104,15 +104,15 @@ export default function BottoneConverti({ pazienteId, isControllo }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <button disabled={loading} onClick={() => registra('PROGRAMMA')}
                     className={`${box} border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}>
-                    Fissa<br />programma
+                    Prenota<br />programma
                   </button>
                   <button disabled={loading} onClick={() => registra('PRESTAZIONE')}
                     className={`${box} border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100`}>
-                    Fissa<br />prestazione
+                    Prenota<br />prestazione
                   </button>
                   <button disabled={loading} onClick={() => registra('FITOTERAPIA')}
                     className={`${box} border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}>
-                    Fissa<br />fitoterapia
+                    Prenota<br />fitoterapia
                   </button>
                   <button
                     onClick={() => setEspanso(e => e === 'DA_RICHIAMARE' ? null : 'DA_RICHIAMARE')}
