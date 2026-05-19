@@ -1097,25 +1097,25 @@ function PopupAppuntamento({ app, pos, onClose, onCancella, onCambiaStato }: {
                 {/* ── Opzioni bioscan INIZIALE (flusso standard) ── */}
                 <div className="grid grid-cols-2 gap-3">
 
-                  {/* Fissa programma */}
+                  {/* Prenota programma */}
                   <button disabled={convLoading}
                     onClick={() => registraDecisione('PROGRAMMA')}
                     className={`${boxBase} border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-40`}>
-                    Fissa<br />programma
+                    Prenota<br />programma
                   </button>
 
-                  {/* Fissa prestazione */}
+                  {/* Prenota prestazione */}
                   <button disabled={convLoading}
                     onClick={() => registraDecisione('PRESTAZIONE')}
                     className={`${boxBase} border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 disabled:opacity-40`}>
-                    Fissa<br />prestazione
+                    Prenota<br />prestazione
                   </button>
 
-                  {/* Fissa fitoterapia */}
+                  {/* Prenota fitoterapia */}
                   <button disabled={convLoading}
                     onClick={() => registraDecisione('FITOTERAPIA')}
                     className={`${boxBase} border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40`}>
-                    Fissa<br />fitoterapia
+                    Prenota<br />fitoterapia
                   </button>
 
                   {/* Deve pensarci — espande date picker */}

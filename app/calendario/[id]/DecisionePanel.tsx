@@ -29,7 +29,7 @@ export default function DecisionePanel({ pazienteId, pazienteNome, registraActio
           <input type="hidden" name="pazienteId" value={pazienteId} />
           <input type="hidden" name="decisione"  value="PROGRAMMA" />
           <button type="submit" className={`w-full ${boxBase} border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}>
-            Fissa<br />programma
+            Prenota<br />programma
           </button>
         </form>
 
@@ -38,7 +38,7 @@ export default function DecisionePanel({ pazienteId, pazienteNome, registraActio
           <input type="hidden" name="pazienteId" value={pazienteId} />
           <input type="hidden" name="decisione"  value="PRESTAZIONE" />
           <button type="submit" className={`w-full ${boxBase} border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100`}>
-            Fissa<br />prestazione
+            Prenota<br />prestazione
           </button>
         </form>
 
@@ -47,7 +47,7 @@ export default function DecisionePanel({ pazienteId, pazienteNome, registraActio
           <input type="hidden" name="pazienteId" value={pazienteId} />
           <input type="hidden" name="decisione"  value="FITOTERAPIA" />
           <button type="submit" className={`w-full ${boxBase} border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}>
-            Fissa<br />fitoterapia
+            Prenota<br />fitoterapia
           </button>
         </form>
 
